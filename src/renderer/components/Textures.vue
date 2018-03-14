@@ -4,7 +4,10 @@
 
     <div>
       <div class="list">
-        <icon class="item" v-for="file in unregistered" v-bind:key="file.filename" v-bind="file" />
+        <div class="item" v-for="file in unregistered" v-bind:key="file.filename">
+          <md-checkbox v-model="selected" :value="file.filename"></md-checkbox>
+          <icon v-bind="file" />
+        </div>
       </div>
     </div>
 
@@ -28,10 +31,12 @@ import Icon from './Textures/Icon'
 export default {
   name: 'textures',
   components: { Icon },
+  data: () => ({
+    selected: []
+  }),
   mounted: function () {
     // If db is null, kick out to '/'.
     if (!this.$store.state.Database.connection) {
-      console.log('Kicking to "/" due to ', this.$store.state.Database.filename)
       this.$router.push('/')
       return
     }

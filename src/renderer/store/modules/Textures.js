@@ -21,20 +21,24 @@ function filesIn (dir) {
   let result = []
 
   files.forEach(file => {
+    // If this file is a subdirectory, recurse.
     let fi = fs.statSync(dir + '/' + file)
     if (fi.isDirectory()) {
-      let recursion = filesIn(dir + '/' + file)
+      let recursion = filesIn(dir + '/' + file).map((v) => {
+        return file + '/' + v
+      })
       result = result.concat(recursion)
       return
     }
+
+    // Disregard anything not a jpg or a png
     let ext = file.split('.').pop().toLowerCase()
     if (ext !== 'png' && ext !== 'jpg') {
       return
     }
-    result.push({
-      file,
-      dir
-    })
+
+    // Add file to list
+    result.push(file)
   })
 
   return result
@@ -95,10 +99,10 @@ const actions = {
   async LOAD_UNREGISTERED ({ commit, dispatch, rootState, state }) {
     commit('ASSIGN_UNREGISTERED', [])
     dispatch('LOAD').then(() => {
-      let dir = path.dirname(rootState.Database.filename)
-      let files = filesIn(dir)
-      files.forEach(o => {
-        getData(o.dir + '/', o.file, null, (err, t) => {
+      let resources = path.dirname(rootState.Database.filename)
+      let files = filesIn(resources)
+      files.forEach(f => {
+        getData(resources + '/', f, null, (err, t) => {
           if (err) {
             dispatch('ERROR', 'getData: ' + err, { root: true })
           }
