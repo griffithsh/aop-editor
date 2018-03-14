@@ -11,6 +11,11 @@ export default new Router({
       component: require('@/components/Welcome').default
     },
     {
+      path: '/texture-editor',
+      name: 'texture-editor',
+      component: require('@/components/Textures').default
+    },
+    {
       path: '*',
       redirect: '/'
     }
