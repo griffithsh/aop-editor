@@ -1,28 +1,42 @@
 <template>
-  <div>
-    <a href="/#/">Home</a>
+  <md-app>
+    <md-app-toolbar class="md-primary">
+      <a href="/#/"><md-icon>home</md-icon></a>
+      &nbsp;&nbsp;&gt;
+      <span class="md-title">
+        Textures
+        <md-tooltip>
+          This feature allows you to register new textures into the database.
+        </md-tooltip>
+      </span>
+    </md-app-toolbar>
+    <md-app-content>
 
-    <div>
-      <div class="list">
-        <div class="item" v-for="file in unregistered" v-bind:key="file.filename">
-          <md-checkbox v-model="selected" :value="file.filename"></md-checkbox>
-          <icon v-bind="file" />
+      <div>
+        <div class="list">
+          <div class="item" v-for="file in unregistered" v-bind:key="file.filename">
+            <md-checkbox v-model="selected" :value="file.filename"></md-checkbox>
+            <icon v-bind="file" />
+          </div>
         </div>
       </div>
-    </div>
 
-    <md-button disabled class="md-primary md-raised">Save</md-button>
+      <md-button :disabled="selected.length === 0" class="md-primary md-raised">
+        Register
+        <md-tooltip>Register selected files as new textures in the database.</md-tooltip>
+      </md-button>
 
-    <div class="list">
-      <div class="item" v-for="texture in textures" v-bind:key="texture.filename">
-          <span>[{{ texture.id }}]</span>
-          <md-avatar style="background-color:#EEE;">
-            <img :src="texture.dataUri" />
-          </md-avatar>
-          <span>"{{ texture.filename }}"</span>
+      <div class="list">
+        <div class="item" v-for="texture in textures" v-bind:key="texture.filename">
+            <span>[{{ texture.id }}]</span>
+            <md-avatar style="background-color:#EEE;">
+              <img :src="texture.dataUri" />
+            </md-avatar>
+            <span>"{{ texture.filename }}"</span>
+        </div>
       </div>
-    </div>
-  </div>
+    </md-app-content>
+  </md-app>
 </template>
 
 <script>
@@ -60,5 +74,8 @@ export default {
   .list>.item {
     display: inline-block;
     width: 350px;
+  }
+  .list>.item>* {
+    float:left;
   }
 </style>

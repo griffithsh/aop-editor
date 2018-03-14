@@ -2,7 +2,6 @@
   <div>
     <md-avatar class="md-large">
       <span style="background-color:#EEE;">
-        <!-- <canvas ref="canvas"></canvas> -->
         <img :src="dataUri" />
       </span>
       <md-tooltip>
@@ -19,17 +18,7 @@
 <script>
 export default {
   name: 'icon',
-  props: ['dataUri', 'filename'],
-  mounted: function () {
-    // let canvas = this.$refs.canvas
-    // let ctx = canvas.getContext('2d')
-
-    // let img = new Image()
-    // img.onload = function () {
-    //   ctx.drawImage(img, 0, 0, 64, 64)
-    // }
-    // img.src = this.dataUri
-  }
+  props: ['dataUri', 'filename']
 }
 </script>
 
