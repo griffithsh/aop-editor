@@ -6,7 +6,7 @@
         <img :src="dataUri" />
       </span>
       <md-tooltip>
-        {{ filename }} (0x0 px)
+        {{ filename }}
         <div style="overflow:hidden;background-color:#EEE;border:1px solid #444">
           <img :src="dataUri" />
         </div>
