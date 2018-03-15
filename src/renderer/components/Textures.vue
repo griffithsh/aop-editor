@@ -9,7 +9,7 @@
       </div>
     </div>
 
-    <md-button :disabled="selected.length === 0" class="md-primary md-raised">
+    <md-button @click="register()" :disabled="selected.length === 0" class="md-primary md-raised">
       Register
       <md-tooltip>Register selected files as new textures in the database.</md-tooltip>
     </md-button>
@@ -52,6 +52,15 @@ export default {
     },
     unregistered () {
       return this.$store.state.Textures.unregistered
+    }
+  },
+  methods: {
+    register () {
+      for (let i = 0; i < this.selected.length; i++) {
+        let f = this.selected[i]
+        this.$store.dispatch('Textures/REGISTER', f, { root: true })
+      }
+      this.selected = []
     }
   }
 }

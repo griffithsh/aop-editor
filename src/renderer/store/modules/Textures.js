@@ -66,6 +66,15 @@ const mutations = {
   // APPEND_UNREGISTERED file to the unregistered list
   APPEND_UNREGISTERED (state, file) {
     state.unregistered.push(file)
+  },
+
+  REMOVE_UNREGISTERED (state, file) {
+    for (let i = 0; i < state.unregistered.length; i++) {
+      if (state.unregistered[i].filename === file) {
+        state.unregistered.splice(i, 1)
+        break
+      }
+    }
   }
 }
 
@@ -113,6 +122,31 @@ const actions = {
             }
           }
           commit('APPEND_UNREGISTERED', t)
+        })
+      })
+    })
+  },
+
+  REGISTER ({ commit, dispatch, rootState }, payload) {
+    rootState.Database.connection.run('INSERT INTO Textures (Filename) VALUES (?);', payload, (err) => {
+      if (err) {
+        dispatch('ERROR', 'Textures/REGISTER/Insert "' + payload + '": ' + err, { root: true })
+        return
+      }
+      // Remove from unregistered
+      commit('REMOVE_UNREGISTERED', payload)
+      rootState.Database.connection.get('SELECT Id,FileName FROM Textures WHERE FileName = ?;', payload, (err, row) => {
+        if (err) {
+          dispatch('ERROR', 'Textures/REGISTER/Select: ' + err, { root: true })
+          return
+        }
+        // Add to list
+        let dir = path.dirname(rootState.Database.filename) + '/'
+        getData(dir, row.FileName, row.Id, (err, t) => {
+          if (err) {
+            dispatch('ERROR', 'getData: ' + err, { root: true })
+          }
+          commit('APPEND', t)
         })
       })
     })
