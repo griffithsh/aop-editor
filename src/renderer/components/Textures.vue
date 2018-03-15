@@ -1,50 +1,38 @@
 <template>
-  <md-app>
-    <md-app-toolbar class="md-primary">
-      <a href="/#/"><md-icon>home</md-icon></a>
-      &nbsp;&nbsp;&gt;
-      <span class="md-title">
-        Textures
-        <md-tooltip>
-          This feature allows you to register new textures into the database.
-        </md-tooltip>
-      </span>
-    </md-app-toolbar>
-    <md-app-content>
-
-      <div>
-        <div class="list">
-          <div class="item" v-for="file in unregistered" v-bind:key="file.filename">
-            <md-checkbox v-model="selected" :value="file.filename"></md-checkbox>
-            <icon v-bind="file" />
-          </div>
-        </div>
-      </div>
-
-      <md-button :disabled="selected.length === 0" class="md-primary md-raised">
-        Register
-        <md-tooltip>Register selected files as new textures in the database.</md-tooltip>
-      </md-button>
-
+  <feature-page name="Textures" tip="This feature allows you to register new textures into the database.">
+    <div>
       <div class="list">
-        <div class="item" v-for="texture in textures" v-bind:key="texture.filename">
-            <span>[{{ texture.id }}]</span>
-            <md-avatar style="background-color:#EEE;">
-              <img :src="texture.dataUri" />
-            </md-avatar>
-            <span>"{{ texture.filename }}"</span>
+        <div class="item" v-for="file in unregistered" v-bind:key="file.filename">
+          <md-checkbox v-model="selected" :value="file.filename"></md-checkbox>
+          <icon v-bind="file" />
         </div>
       </div>
-    </md-app-content>
-  </md-app>
+    </div>
+
+    <md-button :disabled="selected.length === 0" class="md-primary md-raised">
+      Register
+      <md-tooltip>Register selected files as new textures in the database.</md-tooltip>
+    </md-button>
+
+    <div class="list">
+      <div class="item" v-for="texture in textures" v-bind:key="texture.filename">
+          <span>[{{ texture.id }}]</span>
+          <md-avatar style="background-color:#EEE;">
+            <img :src="texture.dataUri" />
+          </md-avatar>
+          <span>"{{ texture.filename }}"</span>
+      </div>
+    </div>
+  </feature-page>
 </template>
 
 <script>
 import Icon from './Textures/Icon'
+import FeaturePage from './FeaturePage'
 
 export default {
   name: 'textures',
-  components: { Icon },
+  components: { FeaturePage, Icon },
   data: () => ({
     selected: []
   }),
@@ -55,8 +43,7 @@ export default {
       return
     }
 
-    // Load all file needed for this component.
-    // this.$store.dispatch('Textures/LOAD', null, { root: true })
+    // Load all files needed for this component.
     this.$store.dispatch('Textures/LOAD_UNREGISTERED', null, { root: true })
   },
   computed: {
