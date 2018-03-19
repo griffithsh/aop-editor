@@ -11,14 +11,17 @@
     </md-app-toolbar>
     <md-app-content>
       <slot>Dummy content</slot>
+      <user-notifications></user-notifications>
     </md-app-content>
   </md-app>
 </template>
 
 <script>
+import UserNotifications from './UserNotifications'
 export default {
   name: 'feature-page',
-  props: ['name', 'tip']
+  props: ['name', 'tip'],
+  components: {UserNotifications}
 }
 </script>
 

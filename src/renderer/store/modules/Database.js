@@ -40,6 +40,7 @@ const actions = {
         dispatch('ERROR', err.message, { root: true })
       }
       commit('ASSIGN', {database, path})
+      dispatch('NOTIFY', { message: 'Loaded database ' + path, duration: 5000 }, { root: true })
     })
   },
 

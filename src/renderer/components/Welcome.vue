@@ -12,9 +12,6 @@
           </md-list-item>
         </md-list>
         <md-button @click="closeDB" class="md-primary md-raised">Close DB</md-button>
-        <md-snackbar>
-          Loaded {{ db.filename }}
-        </md-snackbar>
       </md-app-content>
     </md-app>
     <md-empty-state
@@ -24,14 +21,17 @@
       md-description="Open a core database for the An Other Place game.">
       <md-button @click="pickDB" class="md-primary md-raised">Pick a database</md-button>
     </md-empty-state>
+    <user-notifications></user-notifications>
   </div>
 </template>
 
 <script>
 import { mapActions } from 'vuex'
+import UserNotifications from './UserNotifications'
 
 export default {
   name: 'welcome',
+  components: { UserNotifications },
   data: function () {
     return {
       features: [
