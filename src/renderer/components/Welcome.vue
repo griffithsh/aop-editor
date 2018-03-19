@@ -33,7 +33,7 @@ export default {
   data: function () {
     return {
       features: [
-        { name: 'Texture Editor', url: '/#/texture-editor' }
+        { name: 'Texture Editor', url: '#/texture-editor' }
       ]
     }
   },

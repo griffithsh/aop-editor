@@ -1,7 +1,7 @@
 <template>
   <md-app>
     <md-app-toolbar class="md-primary">
-      <a href="/#/"><md-icon>home</md-icon></a>
+      <a href="#/"><md-icon>home</md-icon></a>
       <span class="md-title">
         {{ name }}
         <md-tooltip>
