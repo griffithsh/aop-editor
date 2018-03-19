@@ -145,8 +145,10 @@ const actions = {
         getData(dir, row.FileName, row.Id, (err, t) => {
           if (err) {
             dispatch('ERROR', 'getData: ' + err, { root: true })
+            return
           }
           commit('APPEND', t)
+          dispatch('NOTIFY', { message: 'Added new texture ' + t.filename }, { root: true })
         })
       })
     })
