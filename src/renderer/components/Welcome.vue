@@ -28,6 +28,8 @@
 </template>
 
 <script>
+import { mapActions } from 'vuex'
+
 export default {
   name: 'welcome',
   data: function () {
@@ -42,16 +44,11 @@ export default {
       return this.$store.state.Database.connection
     }
   },
-  mounted: function () {
-    // console.log('Welcome::mounted', this.$store.state.Database)
-  },
   methods: {
-    pickDB () {
-      this.$store.dispatch('Database/PICK')
-    },
-    closeDB () {
-      this.$store.dispatch('Database/CLOSE')
-    }
+    ...mapActions({
+      pickDB: 'Database/PICK',
+      closeDB: 'Database/CLOSE'
+    })
   }
 }
 </script>
