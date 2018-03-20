@@ -44,6 +44,9 @@ function filesIn (dir) {
   return result
 }
 
+let recentlyRegisteredFiles = []
+let timeout = null
+
 const state = {
   list: [],
   unregistered: []
@@ -148,7 +151,23 @@ const actions = {
             return
           }
           commit('APPEND', t)
-          dispatch('NOTIFY', { message: 'Added new texture ' + t.filename }, { root: true })
+
+          // every time we get here we want to
+          // - append to a list of filenames
+          recentlyRegisteredFiles.push(t.filename)
+          // - reprint the message
+          let msg = 'Added new texture'
+          if (recentlyRegisteredFiles.length > 1) {
+            msg += 's'
+          }
+          msg += ': ' + recentlyRegisteredFiles.join(', ')
+          dispatch('NOTIFY', { message: msg }, { root: true })
+          // - and restart the timeout to empty the list of filenames
+          clearTimeout(timeout)
+          timeout = setTimeout(() => {
+            recentlyRegisteredFiles = []
+            timeout = null
+          }, 1000)
         })
       })
     })
