@@ -7,8 +7,11 @@
       <md-app-content>
         Features
         <md-list>
-          <md-list-item v-for="feature in features" v-bind:key="feature.url">
-            <a :href="feature.url">{{ feature.name }}</a><md-icon>mode_edit</md-icon>
+          <md-list-item v-for="feature in features" v-bind:key="feature.route">
+            <div class="md-layout md-gutter md-alignment-center-left">
+              <md-button @click="navigate(feature.route)" class="md-icon-button"><md-icon>mode_edit</md-icon></md-button>
+              <router-link :to="feature.route">{{ feature.name }}</router-link>
+            </div>
           </md-list-item>
         </md-list>
         <md-button @click="closeDB" class="md-primary md-raised">Close DB</md-button>
@@ -35,7 +38,7 @@ export default {
   data: function () {
     return {
       features: [
-        { name: 'Texture Editor', url: '#/texture-editor' }
+        { name: 'Texture Editor', route: 'texture-editor' }
       ]
     }
   },
@@ -45,6 +48,9 @@ export default {
     }
   },
   methods: {
+    navigate (route) {
+      this.$router.push(route)
+    },
     ...mapActions({
       pickDB: 'Database/PICK',
       closeDB: 'Database/CLOSE'
