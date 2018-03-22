@@ -16,6 +16,17 @@ export default new Router({
       component: require('@/components/Textures').default
     },
     {
+      path: '/level-list',
+      name: 'level-list',
+      component: require('@/components/LevelList').default
+    },
+    {
+      path: '/world-painter/:Level_Id',
+      props: (route) => ({ Level_Id: parseInt(route.params.Level_Id) }),
+      name: 'world-painter',
+      component: require('@/components/WorldPainter').default
+    },
+    {
       path: '*',
       redirect: '/'
     }

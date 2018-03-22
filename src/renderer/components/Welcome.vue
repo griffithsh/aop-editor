@@ -38,7 +38,8 @@ export default {
   data: function () {
     return {
       features: [
-        { name: 'Texture Editor', route: 'texture-editor' }
+        { name: 'Texture Editor', route: 'texture-editor' },
+        { name: 'Level List', route: 'level-list' }
       ]
     }
   },
