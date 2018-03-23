@@ -7,7 +7,7 @@
 ``` bash
 # install dependencies
 npm install
-npm install sqlite3 --build-from-source --runtime=electron --target=1.8.2 --dist-url=https://atom.io/download/electron
+npm install sqlite3 --build-from-source --runtime=electron --target=1.8.4 --dist-url=https://atom.io/download/electron
 # make sure the version of electron specified here in the target parameter matches what has been downloaded by npm in node_modules/electron/package.json
 
 # serve with hot reload at localhost:9080
