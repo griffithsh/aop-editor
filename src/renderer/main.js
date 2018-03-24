@@ -14,6 +14,7 @@ import {
   MdApp,
   MdAvatar,
   MdButton,
+  MdCard,
   MdCheckbox,
   MdContent,
   MdDrawer,
@@ -27,6 +28,7 @@ import {
 Vue.use(MdApp)
 Vue.use(MdAvatar)
 Vue.use(MdButton)
+Vue.use(MdCard)
 Vue.use(MdCheckbox)
 Vue.use(MdContent)
 Vue.use(MdDrawer)
