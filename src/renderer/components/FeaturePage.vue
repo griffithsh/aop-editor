@@ -10,7 +10,7 @@
       </span>
     </md-app-toolbar>
     <md-app-content>
-      <slot>Dummy content</slot>
+      <slot />
       <user-notifications></user-notifications>
     </md-app-content>
   </md-app>

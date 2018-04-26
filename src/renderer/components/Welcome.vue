@@ -35,6 +35,7 @@ import UserNotifications from './UserNotifications'
 export default {
   name: 'welcome',
   components: { UserNotifications },
+
   data: function () {
     return {
       features: [

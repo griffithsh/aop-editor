@@ -2,16 +2,18 @@ import fs from 'fs'
 import path from 'path'
 
 // getData of a file, composing the base64 encoded data-uri
-function getData (dir, filename, id, callback) {
-  fs.readFile(dir + filename, function (err, data) {
-    if (err) {
-      callback(new Error('readFile: ' + err), null)
-      return
-    }
-    callback(null, {
-      filename,
-      id,
-      dataUri: 'data:image/' + filename.split('.').pop() + ';base64,' + Buffer.from(data).toString('base64')
+function getData (dir, filename, id) {
+  return new Promise((resolve, reject) => {
+    fs.readFile(dir + filename, function (err, data) {
+      if (err) {
+        reject(new Error('readFile: ' + err), null)
+        return
+      }
+      resolve({
+        filename,
+        id,
+        dataUri: 'data:image/' + filename.split('.').pop() + ';base64,' + Buffer.from(data).toString('base64')
+      })
     })
   })
 }
@@ -94,15 +96,16 @@ const actions = {
         if (err) {
           dispatch('ERROR', 'SELECT Textures: ' + err, { root: true })
         }
-        rows.forEach((row) => {
-          getData(dir, row.FileName, row.Id, (err, t) => {
-            if (err) {
-              dispatch('ERROR', 'getData: ' + err, { root: true })
-            }
-            commit('APPEND', t)
+        Promise.all(rows.map((row) => {
+          return new Promise((resolve, reject) => {
+            getData(dir, row.FileName, row.Id).then((t) => {
+              commit('APPEND', t)
+              resolve()
+            }, reject)
           })
+        })).then(resolve, (err) => {
+          dispatch('ERROR', 'getData: ' + err, { root: true })
         })
-        resolve()
       })
     })
   },
@@ -114,17 +117,15 @@ const actions = {
       let resources = path.dirname(rootState.Database.filename)
       let files = filesIn(resources)
       files.forEach(f => {
-        getData(resources + '/', f, null, (err, t) => {
-          if (err) {
-            dispatch('ERROR', 'getData: ' + err, { root: true })
-          }
-
+        getData(resources + '/', f, null).then((t) => {
           for (let i = 0; i < state.list.length; i++) {
             if (state.list[i].filename === t.filename) {
               return
             }
           }
           commit('APPEND_UNREGISTERED', t)
+        }, (err) => {
+          dispatch('ERROR', 'getData: ' + err, { root: true })
         })
       })
     })
@@ -145,11 +146,7 @@ const actions = {
         }
         // Add to list
         let dir = path.dirname(rootState.Database.filename) + '/'
-        getData(dir, row.FileName, row.Id, (err, t) => {
-          if (err) {
-            dispatch('ERROR', 'getData: ' + err, { root: true })
-            return
-          }
+        getData(dir, row.FileName, row.Id).then((t) => {
           commit('APPEND', t)
 
           // every time we get here we want to
@@ -168,6 +165,8 @@ const actions = {
             recentlyRegisteredFiles = []
             timeout = null
           }, 1000)
+        }, (err) => {
+          dispatch('ERROR', 'getData: ' + err, { root: true })
         })
       })
     })

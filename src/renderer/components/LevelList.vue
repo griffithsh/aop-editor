@@ -36,21 +36,17 @@ export default {
       this.$router.push('/')
       return
     }
-
     this.getLevels()
   },
   computed: {
     loaded () {
-      if (this.$store.state.Levels.list) {
-        return this.$store.state.Levels.list.length > 0
+      if (this.$store.state.LevelPreviews.list) {
+        return this.$store.state.LevelPreviews.list.length > 0
       }
       return false
     },
     levels () {
-      // this.$store.state.Levels.list.forEach((level) => {
-      //   console.log('level', level.Id, level.Description)
-      // })
-      return this.$store.state.Levels.list
+      return this.$store.state.LevelPreviews.list
     }
   },
   methods: {
@@ -61,7 +57,7 @@ export default {
       console.log('TODO: add a new level')
     },
     ...mapActions({
-      getLevels: 'Levels/GET'
+      getLevels: 'LevelPreviews/GET'
     })
   }
 }
