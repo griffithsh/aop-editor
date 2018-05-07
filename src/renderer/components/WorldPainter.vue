@@ -1,7 +1,7 @@
 <template>
   <div id="world-painter">
     <md-toolbar class="md-primary">
-      <span class="md-title"><md-tooltip>Level Id: {{ details.Id }}</md-tooltip> {{ details.Description }}</span>
+      <h1 class="md-title"><md-tooltip>Level Id: {{ details.Id }}</md-tooltip> {{ details.Description }}</h1>
       <md-button class="md-icon" @click="back()">close</md-button>
     </md-toolbar>
     <div class="middle">
@@ -162,6 +162,7 @@ export default {
     back () {
       this.$router.push('/level-list')
     },
+
     zoomIn () {
       if (this.scale >= 8) {
         return
@@ -172,6 +173,7 @@ export default {
         this.scaleTo(this.scale * 2)
       }
     },
+
     zoomOut () {
       if (this.scale <= 0.25) {
         return
@@ -195,6 +197,7 @@ export default {
         app.stage.y = (ch / 2) - (lh / 2 * s)
       }
     },
+
     scaleTo (s) {
       let f = this.getFocus()
       this.scale = s
@@ -219,6 +222,8 @@ export default {
       app.stage.x = -1 * ((s * point.x) - (w / 2))
       app.stage.y = -1 * ((s * point.y) - (h / 2))
     },
+
+    // getFocus returns the level coordinates that are currently at the center of the screen
     getFocus () {
       if (!app) {
         return {
@@ -240,20 +245,13 @@ export default {
       }
       return result
     },
+
     debug () {
       console.log('debugging method does stuff')
-      // let q = {
-      //   Id: 112344,
-      //   QuadBatch_Id: 1,
-      //   WorldLocationX: 96,
-      //   WorldLocationY: 64,
-      //   Tile_Id: 1
-      // }
-      // this.$store.commit('LevelDetails/APPEND_QUAD', q)
-      // this.currentLayer = -1
-      // this.redraw()
+
       this.focus({ x: 128, y: 128 })
     },
+
     redraw () {
       if (!app) {
         return
@@ -339,6 +337,7 @@ export default {
         app.stage.addChild(container)
       }
     },
+
     resize (e) {
       let w = this.$refs.canvas.offsetWidth
       let h = this.$refs.canvas.offsetHeight
@@ -352,6 +351,9 @@ export default {
 html, body, #app {
   height:100%;
   min-height:100%;
+}
+h1, footer {
+  cursor: default
 }
 #world-painter {
   height:100%;

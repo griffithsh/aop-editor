@@ -12,4 +12,7 @@
 
 <style>
   /* CSS */
+  * {
+    user-select: none;
+  }
 </style>
