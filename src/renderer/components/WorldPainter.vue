@@ -1,16 +1,28 @@
 <template>
-  <div style="height:100%;display:flex;flex-flow:column">
+  <div id="world-painter">
     <md-toolbar class="md-primary">
-      <span class="md-title">[{{ details.Id }}] {{ details.Description }}</span>
-      <md-button class="md-icon" @click="debug()">create</md-button>
-      <md-button class="md-icon" @click="back()">arrow_back</md-button>
+      <span class="md-title"><md-tooltip>Level Id: {{ details.Id }}</md-tooltip> {{ details.Description }}</span>
+      <md-button class="md-icon" @click="back()">close</md-button>
     </md-toolbar>
-    <div style="display:flex;flex-flow:row;height:100%">
-      <aside style="width:200px;">TODO - toolbox goes here</aside>
-      <canvas id="pixi-canvas" ref="canvas"></canvas>
+    <div class="middle">
+      <aside>
+        <md-button class="md-icon-button md-dense" @click="zoomIn()">
+          <md-tooltip>Zoom In</md-tooltip>
+          <md-icon>zoom_in</md-icon>
+        </md-button>
+        <md-button class="md-icon-button md-dense" @click="zoomOut()">
+          <md-tooltip>Zoom Out</md-tooltip>
+          <md-icon>zoom_out</md-icon>
+        </md-button>
+        <md-button class="md-icon-button md-dense" @click="debug()">
+          <md-tooltip>Debug hacks</md-tooltip>
+          <md-icon>extension</md-icon>
+        </md-button>
+      </aside>
+      <canvas ref="canvas"></canvas>
     </div>
-    <footer style="height:64px;">
-      TODO - Info! How wide is this level, where are we focusing? What mode are we in? <span>{{ getFocus.x + '|' + getFocus.y }}</span>
+    <footer>
+      TODO - Info! How wide is this level, where are we focusing? What mode are we in? <span>{{ x + '|' + y }}</span> zoom: {{ scale*100 }}%
     </footer>
   </div>
 </template>
@@ -26,9 +38,14 @@ export default {
   props: {
     Level_Id: Number
   },
-  data: () => ({
-    currentLayer: 0
-  }),
+  data: () => {
+    return {
+      currentLayer: 0,
+      scale: 1,
+      x: 0,
+      y: 0
+    }
+  },
   beforeDestroy: function () {
     if (app) {
       app.destroy()
@@ -82,6 +99,9 @@ export default {
         app.stage.on('mousemove', (e) => {
           app.stage.x += e.data.originalEvent.movementX
           app.stage.y += e.data.originalEvent.movementY
+          let f = this.getFocus()
+          this.x = f.x
+          this.y = f.y
         })
       })
       app.stage.on('mouseup', (e) => {
@@ -91,12 +111,15 @@ export default {
         console.log('lost!')
       })
 
-      app.stage.scale.x = 1
-      app.stage.scale.y = 1
+      app.stage.scale.x = this.scale
+      app.stage.scale.y = this.scale
 
       // focus on center of level
       app.stage.x = (w / 2) - (this.$store.state.LevelDetails.details.Width / 2 * app.stage.scale.x)
       app.stage.y = (h / 2) - (this.$store.state.LevelDetails.details.Height / 2 * app.stage.scale.y)
+      let f = this.getFocus()
+      this.x = f.x
+      this.y = f.y
     })
   },
   computed: {
@@ -105,23 +128,6 @@ export default {
     },
     quads () {
       return this.$store.state.LevelDetails.quads
-    },
-    getFocus () {
-      if (app === null) {
-        return { x: 0, y: 0 }
-      }
-      let w = 0
-      let h = 0
-      if (this.$refs.canvas) {
-        w = this.$refs.canvas.offsetWidth
-        h = this.$refs.canvas.offsetHeight
-      }
-      let result = {
-        x: app.stage.x - (w / 2) + (this.$store.state.LevelDetails.details.Width / 2),
-        y: app.stage.y - (h / 2) + (this.$store.state.LevelDetails.details.Height / 2)
-      }
-      console.log('getter', result)
-      return result
     }
   },
   watch: {
@@ -133,15 +139,36 @@ export default {
     back () {
       this.$router.push('/level-list')
     },
+    zoomIn () {
+      if (this.scale >= 8) {
+        return
+      }
+      if (this.scale >= 1) {
+        this.scaleTo(this.scale + 1)
+      } else {
+        this.scaleTo(this.scale * 2)
+      }
+    },
+    zoomOut () {
+      if (this.scale <= 0.25) {
+        return
+      }
+      if (this.scale > 1) {
+        this.scaleTo(this.scale - 1)
+      } else {
+        this.scaleTo(this.scale / 2)
+      }
+    },
     scaleTo (s) {
       // let f = this.getFocus
+      this.scale = s
       app.stage.scale.x = s
       app.stage.scale.y = s
       // this.focus(f)
     },
     focus (point) {
       if (app === null) {
-        return { x: 0, y: 0 }
+        return
       }
       let w = 0
       let h = 0
@@ -155,6 +182,31 @@ export default {
       app.stage.x = point.x + (w / 2) - (this.$store.state.LevelDetails.details.Width / 2)
       app.stage.y = point.y + (h / 2) - (this.$store.state.LevelDetails.details.Height / 2)
     },
+    getFocus () {
+      if (!app) {
+        return {
+          x: 0,
+          y: 0
+        }
+      }
+      let cw = 0
+      let ch = 0
+      if (this.$refs.canvas) {
+        cw = this.$refs.canvas.offsetWidth
+        ch = this.$refs.canvas.offsetHeight
+      }
+      let s = this.scale
+
+      let lw = this.$store.state.LevelDetails.details.Width
+      let lh = this.$store.state.LevelDetails.details.Height
+
+      let result = {
+        x: -(app.stage.x / s) + (cw / 2) + (lw / 2),
+        y: -(app.stage.y / s) + (ch / 2) + (lh / 2)
+      }
+      console.log('getFocus:', result, `(stage: ${app.stage.x}:${app.stage.y}, level: ${lw}:${lh}, canvas: ${cw}:${ch}, scaled to ${s * 100}%)`)
+      return result
+    },
     debug () {
       console.log('debugging method does stuff')
       // let q = {
@@ -167,7 +219,7 @@ export default {
       // this.$store.commit('LevelDetails/APPEND_QUAD', q)
       // this.currentLayer = -1
       // this.redraw()
-      this.scaleTo(2)
+      this.zoomOut()
     },
     redraw () {
       if (!app) {
@@ -264,17 +316,31 @@ export default {
 </script>
 
 <style>
- html, body, #app {
-   height:100%;
-   min-height:100%;
- }
- .bg {
-   background-color:#333;
-   height:100%;
-   overflow:hidden;
- }
- #pixi-canvas {
-   width: 100%;
-   height: 100%;
- }
+html, body, #app {
+  height:100%;
+  min-height:100%;
+}
+#world-painter {
+  height:100%;
+  display:flex;
+  flex-flow:column;
+}
+#world-painter>.middle {
+  display:flex;
+  flex-flow:row;
+  height:100%;
+}
+#world-painter>.middle>aside {
+  width:200px;
+  min-width:200px;
+  padding-top:8px
+}
+#world-painter>footer {
+  padding:0.1rem;
+  height:1.2rem;
+}
+#world-painter canvas {
+  width: 100%;
+  height: 100%;
+}
 </style>
