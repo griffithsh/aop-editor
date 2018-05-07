@@ -97,11 +97,34 @@ export default {
       app.stage.interactive = true
       app.stage.on('mousedown', (e) => {
         app.stage.on('mousemove', (e) => {
-          app.stage.x += e.data.originalEvent.movementX
-          app.stage.y += e.data.originalEvent.movementY
+          let s = this.scale
+          let lw = this.$store.state.LevelDetails.details.Width
+          let lh = this.$store.state.LevelDetails.details.Height
+
+          // If the entire level fits on the canvas, don't scroll it.
+          if (lw * s > w) {
+            app.stage.x += e.data.originalEvent.movementX
+          }
+          if (lh * s > h) {
+            app.stage.y += e.data.originalEvent.movementY
+          }
+
           let f = this.getFocus()
+
+          if (f.x > lw) {
+            f.x = lw
+          } else if (f.x < 0) {
+            f.x = 0
+          }
+          if (f.y > lh) {
+            f.y = lh
+          } else if (f.y < 0) {
+            f.y = 0
+          }
+
           this.x = f.x
           this.y = f.y
+          this.focus(f)
         })
       })
       app.stage.on('mouseup', (e) => {
@@ -115,8 +138,8 @@ export default {
       app.stage.scale.y = this.scale
 
       // focus on center of level
-      app.stage.x = (w / 2) - (this.$store.state.LevelDetails.details.Width / 2 * app.stage.scale.x)
-      app.stage.y = (h / 2) - (this.$store.state.LevelDetails.details.Height / 2 * app.stage.scale.y)
+      app.stage.x = (w / 2) - (this.$store.state.LevelDetails.details.Width / 2 * this.scale)
+      app.stage.y = (h / 2) - (this.$store.state.LevelDetails.details.Height / 2 * this.scale)
       let f = this.getFocus()
       this.x = f.x
       this.y = f.y
@@ -158,29 +181,43 @@ export default {
       } else {
         this.scaleTo(this.scale / 2)
       }
+      // If we're scrolling out, and the new scale means the entire level fits
+      // on the canvas now, then center it.
+      let lw = this.$store.state.LevelDetails.details.Width
+      let lh = this.$store.state.LevelDetails.details.Height
+      let cw = this.$refs.canvas.offsetWidth
+      let ch = this.$refs.canvas.offsetHeight
+      let s = this.scale
+      if (lw * s <= cw) {
+        app.stage.x = (cw / 2) - (lw / 2 * s)
+      }
+      if (lh * s <= ch) {
+        app.stage.y = (ch / 2) - (lh / 2 * s)
+      }
     },
     scaleTo (s) {
-      // let f = this.getFocus
+      let f = this.getFocus()
       this.scale = s
       app.stage.scale.x = s
       app.stage.scale.y = s
-      // this.focus(f)
+      this.focus(f)
     },
     focus (point) {
       if (app === null) {
         return
       }
+
+      let s = this.scale
       let w = 0
       let h = 0
       if (this.$refs.canvas) {
         w = this.$refs.canvas.offsetWidth
         h = this.$refs.canvas.offsetHeight
       }
-      console.log('setter', point)
 
-      // Then adjust app.stage. x and y until the center of the screen focuses on point
-      app.stage.x = point.x + (w / 2) - (this.$store.state.LevelDetails.details.Width / 2)
-      app.stage.y = point.y + (h / 2) - (this.$store.state.LevelDetails.details.Height / 2)
+      // Adjust app.stage. x and y until the center of the screen focuses on point.
+      app.stage.x = -1 * ((s * point.x) - (w / 2))
+      app.stage.y = -1 * ((s * point.y) - (h / 2))
     },
     getFocus () {
       if (!app) {
@@ -197,14 +234,10 @@ export default {
       }
       let s = this.scale
 
-      let lw = this.$store.state.LevelDetails.details.Width
-      let lh = this.$store.state.LevelDetails.details.Height
-
       let result = {
-        x: -(app.stage.x / s) + (cw / 2) + (lw / 2),
-        y: -(app.stage.y / s) + (ch / 2) + (lh / 2)
+        x: ((cw / 2) - app.stage.x) / s,
+        y: ((ch / 2) - app.stage.y) / s
       }
-      console.log('getFocus:', result, `(stage: ${app.stage.x}:${app.stage.y}, level: ${lw}:${lh}, canvas: ${cw}:${ch}, scaled to ${s * 100}%)`)
       return result
     },
     debug () {
@@ -219,7 +252,7 @@ export default {
       // this.$store.commit('LevelDetails/APPEND_QUAD', q)
       // this.currentLayer = -1
       // this.redraw()
-      this.zoomOut()
+      this.focus({ x: 128, y: 128 })
     },
     redraw () {
       if (!app) {
