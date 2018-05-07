@@ -41,9 +41,13 @@ export default {
   data: () => {
     return {
       currentLayer: 0,
-      scale: 1,
+      scale: 2,
       x: 0,
-      y: 0
+      y: 0,
+      mousemoveHandler: null,
+      mousedownHandler: null,
+      mouseupHandler: null,
+      mouseleaveHandler: null
     }
   },
   beforeDestroy: function () {
@@ -95,44 +99,31 @@ export default {
       this.redraw()
 
       app.stage.interactive = true
+
+      // Bind handler delegators.
       app.stage.on('mousedown', (e) => {
-        app.stage.on('mousemove', (e) => {
-          let s = this.scale
-          let lw = this.$store.state.LevelDetails.details.Width
-          let lh = this.$store.state.LevelDetails.details.Height
-
-          // If the entire level fits on the canvas, don't scroll it.
-          if (lw * s > w) {
-            app.stage.x += e.data.originalEvent.movementX
-          }
-          if (lh * s > h) {
-            app.stage.y += e.data.originalEvent.movementY
-          }
-
-          let f = this.getFocus()
-
-          if (f.x > lw) {
-            f.x = lw
-          } else if (f.x < 0) {
-            f.x = 0
-          }
-          if (f.y > lh) {
-            f.y = lh
-          } else if (f.y < 0) {
-            f.y = 0
-          }
-
-          this.x = f.x
-          this.y = f.y
-          this.focus(f)
-        })
+        if (this.mousedownHandler) {
+          this.mousedownHandler(e)
+        }
       })
       app.stage.on('mouseup', (e) => {
-        app.stage.off('mousemove')
+        if (this.mouseupHandler) {
+          this.mouseupHandler(e)
+        }
       })
-      app.stage.on('mouseleave', (e) => {
-        console.log('lost!')
+      app.stage.on('mousemove', (e) => {
+        if (this.mousemoveHandler) {
+          this.mousemoveHandler(e)
+        }
       })
+      app.stage.on('mouseout', (e) => {
+        if (this.mouseleaveHandler) {
+          this.mouseleaveHandler(e)
+        }
+      })
+
+      // Configure default mouse handlers with the delegators by selecting the Pan tool.
+      this.selectPan()
 
       app.stage.scale.x = this.scale
       app.stage.scale.y = this.scale
@@ -205,6 +196,63 @@ export default {
       app.stage.scale.y = s
       this.focus(f)
     },
+
+    selectNone () {
+      this.mousedownHandler = null
+      this.mouseupHandler = null
+      this.mousemoveHandler = null
+      this.mouseleaveHandler = null
+    },
+
+    selectPan () {
+      this.mousedownHandler = (e) => {
+        this.mousemoveHandler = this.handlePan
+      }
+      this.mouseupHandler = (e) => {
+        this.mousemoveHandler = null
+      }
+      this.mouseleaveHandler = (e) => {
+        // If the cursor has left the window, then end any panning we were
+        // in the middle of.
+        this.mousemoveHandler = null
+      }
+    },
+
+    handlePan (e) {
+      let w = this.$refs.canvas.offsetWidth
+      let h = this.$refs.canvas.offsetHeight
+      let s = this.scale
+      let lw = this.$store.state.LevelDetails.details.Width
+      let lh = this.$store.state.LevelDetails.details.Height
+
+      // If the entire level fits on the canvas, don't scroll it.
+      if (lw * s > w) {
+        app.stage.x += e.data.originalEvent.movementX
+      }
+      if (lh * s > h) {
+        app.stage.y += e.data.originalEvent.movementY
+      }
+
+      let f = this.getFocus()
+
+      if (f.x > lw) {
+        f.x = lw
+      } else if (f.x < 0) {
+        f.x = 0
+      }
+      if (f.y > lh) {
+        f.y = lh
+      } else if (f.y < 0) {
+        f.y = 0
+      }
+
+      this.x = f.x
+      this.y = f.y
+      this.focus(f)
+    },
+
+    // focus pans the view of the level until the level coordinates provided in
+    // point are at the center of the screen.
     focus (point) {
       if (app === null) {
         return
