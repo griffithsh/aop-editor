@@ -306,6 +306,21 @@ export default {
       }
       app.stage.removeChildren()
 
+      // Add an invisible black pixel sprite to collect mouseout events
+      let s = PIXI.Sprite.fromImage('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC')
+      let lw = this.$store.state.LevelDetails.details.Width
+      let lh = this.$store.state.LevelDetails.details.Height
+      for (let layer of this.$store.state.LevelDetails.layers) {
+        if (this.currentLayer === layer.Index) {
+          lw = layer.Width
+          lh = layer.Height
+        }
+      }
+      s.width = lw
+      s.height = lh
+      s.alpha = 0
+      app.stage.addChild(s)
+
       for (let layer of this.$store.state.LevelDetails.layers) {
         let container = new PIXI.Container()
 
@@ -377,6 +392,7 @@ export default {
           container.filters = [colorMatrix]
           colorMatrix.greyscale(0.3)
           rectangle.lineStyle(1, 0x555555, 1)
+          container.interactiveChildren = false
         }
         rectangle.drawRect(0, 0, layer.Width, layer.Height)
         rectangle.endFill()
