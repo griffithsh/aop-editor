@@ -18,6 +18,10 @@
           <md-tooltip>Debug hacks</md-tooltip>
           <md-icon>extension</md-icon>
         </md-button>
+        <md-button class="md-icon-button md-dense" @click="selectPaint()">
+          <md-tooltip>Add Tiles to the current layer</md-tooltip>
+          <md-icon>edit</md-icon>
+        </md-button>
       </aside>
       <canvas ref="canvas"></canvas>
     </div>
@@ -44,10 +48,18 @@ export default {
       scale: 2,
       x: 0,
       y: 0,
+
+      // handler delegators
       mousemoveHandler: null,
       mousedownHandler: null,
       mouseupHandler: null,
-      mouseleaveHandler: null
+      mouseoutHandler: null,
+      mouseoverHandler: null,
+      mouseX: 0,
+      mouseY: 0
+
+      // selectedTileGroup
+      // ...
     }
   },
   beforeDestroy: function () {
@@ -96,6 +108,16 @@ export default {
         roundPixels: true,
         antialias: false
       })
+
+      // Add an invisible black pixel sprite to collect mouseout events
+      let s = PIXI.Sprite.fromImage('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC')
+      let cw = this.$refs.canvas.offsetWidth
+      let ch = this.$refs.canvas.offsetHeight
+      s.width = cw
+      s.height = ch
+      s.alpha = 0.25
+      app.stage.addChild(s)
+
       this.redraw()
 
       app.stage.interactive = true
@@ -103,34 +125,44 @@ export default {
       // Bind handler delegators.
       app.stage.on('mousedown', (e) => {
         if (this.mousedownHandler) {
-          this.mousedownHandler(e)
+          this.mousedownHandler(e.data.originalEvent)
         }
       })
       app.stage.on('mouseup', (e) => {
         if (this.mouseupHandler) {
-          this.mouseupHandler(e)
+          this.mouseupHandler(e.data.originalEvent)
         }
       })
       app.stage.on('mousemove', (e) => {
+        // record where the mouse is ...
+        this.mouseX = e.data.originalEvent.offsetX
+        this.mouseY = e.data.originalEvent.offsetY
+
         if (this.mousemoveHandler) {
-          this.mousemoveHandler(e)
+          this.mousemoveHandler(e.data.originalEvent)
         }
       })
       app.stage.on('mouseout', (e) => {
-        if (this.mouseleaveHandler) {
-          this.mouseleaveHandler(e)
+        if (this.mouseoutHandler) {
+          this.mouseoutHandler(e.data.originalEvent)
+        }
+      })
+
+      app.stage.on('mouseover', (e) => {
+        if (this.mouseoverHandler) {
+          this.mouseoverHandler(e.data.originalEvent)
         }
       })
 
       // Configure default mouse handlers with the delegators by selecting the Pan tool.
       this.selectPan()
 
-      app.stage.scale.x = this.scale
-      app.stage.scale.y = this.scale
+      app.stage.layerChild.scale.x = this.scale
+      app.stage.layerChild.scale.y = this.scale
 
       // focus on center of level
-      app.stage.x = (w / 2) - (this.$store.state.LevelDetails.details.Width / 2 * this.scale)
-      app.stage.y = (h / 2) - (this.$store.state.LevelDetails.details.Height / 2 * this.scale)
+      app.stage.layerChild.x = (w / 2) - (this.$store.state.LevelDetails.details.Width / 2 * this.scale)
+      app.stage.layerChild.y = (h / 2) - (this.$store.state.LevelDetails.details.Height / 2 * this.scale)
       let f = this.getFocus()
       this.x = f.x
       this.y = f.y
@@ -174,6 +206,7 @@ export default {
       } else {
         this.scaleTo(this.scale / 2)
       }
+
       // If we're scrolling out, and the new scale means the entire level fits
       // on the canvas now, then center it.
       let lw = this.$store.state.LevelDetails.details.Width
@@ -182,18 +215,18 @@ export default {
       let ch = this.$refs.canvas.offsetHeight
       let s = this.scale
       if (lw * s <= cw) {
-        app.stage.x = (cw / 2) - (lw / 2 * s)
+        app.stage.layerChild.x = (cw / 2) - (lw / 2 * s)
       }
       if (lh * s <= ch) {
-        app.stage.y = (ch / 2) - (lh / 2 * s)
+        app.stage.layerChild.y = (ch / 2) - (lh / 2 * s)
       }
     },
 
     scaleTo (s) {
       let f = this.getFocus()
       this.scale = s
-      app.stage.scale.x = s
-      app.stage.scale.y = s
+      app.stage.layerChild.scale.x = s
+      app.stage.layerChild.scale.y = s
       this.focus(f)
     },
 
@@ -201,7 +234,35 @@ export default {
       this.mousedownHandler = null
       this.mouseupHandler = null
       this.mousemoveHandler = null
-      this.mouseleaveHandler = null
+      this.mouseoutHandler = null
+      this.mouseoverHandler = null
+    },
+
+    selectPaint () {
+      this.selectNone()
+      // TODO!
+      // Auto-select a QuadBatch to operate on.
+      // Auto-select a tile group to randomly pick tiles from.`
+      // Set mouse cursor to be a semi-transparent image of the first tile in the selected tile group.
+      let tile = this.$store.state.Tiles.tiles[11]
+      let texture = PIXI.loader.resources[String(tile.Texture_Id)].texture
+      texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST
+      let frame = new PIXI.Rectangle(tile.TextureX, tile.TextureY, tile.Width, tile.Height)
+      let sprite = new PIXI.Sprite(new PIXI.Texture(texture, frame))
+      app.stage.layerChild.addChild(sprite)
+      sprite.alpha = 0
+      this.mousemoveHandler = () => {
+        sprite.x = Math.round((this.mouseX - app.stage.layerChild.x) / this.scale) - tile.Width / 2
+        sprite.y = Math.round((this.mouseY - app.stage.layerChild.y) / this.scale) - tile.Height / 2
+      }
+      this.mouseoutHandler = () => {
+        sprite.alpha = 0
+      }
+      this.mouseoverHandler = () => {
+        sprite.alpha = 0.75
+      }
+
+      // When you `mousedown`, the selected tile group is placed.
     },
 
     selectPan () {
@@ -211,7 +272,7 @@ export default {
       this.mouseupHandler = (e) => {
         this.mousemoveHandler = null
       }
-      this.mouseleaveHandler = (e) => {
+      this.mouseoutHandler = (e) => {
         // If the cursor has left the window, then end any panning we were
         // in the middle of.
         this.mousemoveHandler = null
@@ -227,14 +288,15 @@ export default {
 
       // If the entire level fits on the canvas, don't scroll it.
       if (lw * s > w) {
-        app.stage.x += e.data.originalEvent.movementX
+        app.stage.layerChild.x += e.movementX
       }
       if (lh * s > h) {
-        app.stage.y += e.data.originalEvent.movementY
+        app.stage.layerChild.y += e.movementY
       }
 
       let f = this.getFocus()
 
+      // Don't let the focus be beyond the bounds of the level.
       if (f.x > lw) {
         f.x = lw
       } else if (f.x < 0) {
@@ -267,8 +329,8 @@ export default {
       }
 
       // Adjust app.stage. x and y until the center of the screen focuses on point.
-      app.stage.x = -1 * ((s * point.x) - (w / 2))
-      app.stage.y = -1 * ((s * point.y) - (h / 2))
+      app.stage.layerChild.x = -1 * ((s * point.x) - (w / 2))
+      app.stage.layerChild.y = -1 * ((s * point.y) - (h / 2))
     },
 
     // getFocus returns the level coordinates that are currently at the center of the screen
@@ -288,8 +350,8 @@ export default {
       let s = this.scale
 
       let result = {
-        x: ((cw / 2) - app.stage.x) / s,
-        y: ((ch / 2) - app.stage.y) / s
+        x: ((cw / 2) - app.stage.layerChild.x) / s,
+        y: ((ch / 2) - app.stage.layerChild.y) / s
       }
       return result
     },
@@ -304,22 +366,13 @@ export default {
       if (!app) {
         return
       }
-      app.stage.removeChildren()
 
-      // Add an invisible black pixel sprite to collect mouseout events
-      let s = PIXI.Sprite.fromImage('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC')
-      let lw = this.$store.state.LevelDetails.details.Width
-      let lh = this.$store.state.LevelDetails.details.Height
-      for (let layer of this.$store.state.LevelDetails.layers) {
-        if (this.currentLayer === layer.Index) {
-          lw = layer.Width
-          lh = layer.Height
-        }
+      if (app.stage.layerChild) {
+        app.stage.layerChild.removeChildren()
+      } else {
+        app.stage.layerChild = new PIXI.Container()
+        app.stage.addChild(app.stage.layerChild)
       }
-      s.width = lw
-      s.height = lh
-      s.alpha = 0
-      app.stage.addChild(s)
 
       for (let layer of this.$store.state.LevelDetails.layers) {
         let container = new PIXI.Container()
@@ -398,7 +451,7 @@ export default {
         rectangle.endFill()
         container.addChild(rectangle)
 
-        app.stage.addChild(container)
+        app.stage.layerChild.addChild(container)
       }
     },
 
@@ -406,6 +459,8 @@ export default {
       let w = this.$refs.canvas.offsetWidth
       let h = this.$refs.canvas.offsetHeight
       app.renderer.resize(w, h)
+      app.stage.children[0].width = w
+      app.stage.children[0].height = h
     }
   }
 }
