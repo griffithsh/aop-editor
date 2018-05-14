@@ -1,11 +1,16 @@
 <template>
   <div id="world-painter">
     <md-toolbar class="md-primary">
-      <h1 class="md-title"><md-tooltip>Level Id: {{ details.Id }}</md-tooltip> {{ details.Description }}</h1>
+      <h1 class="md-title"><md-tooltip>Level Id: {{ details.Id }}</md-tooltip>"{{ details.Description }}"</h1>
       <md-button class="md-icon" @click="back()">close</md-button>
     </md-toolbar>
     <div class="middle">
       <aside>
+        <!-- <md-button class="md-icon-button md-dense" @click="debug()">
+          <md-tooltip>Debug hacks</md-tooltip>
+          <md-icon>new_releases</md-icon>
+        </md-button>
+        <hr> -->
         <md-button class="md-icon-button md-dense" @click="zoomIn()">
           <md-tooltip>Zoom In</md-tooltip>
           <md-icon>zoom_in</md-icon>
@@ -14,14 +19,24 @@
           <md-tooltip>Zoom Out</md-tooltip>
           <md-icon>zoom_out</md-icon>
         </md-button>
-        <md-button class="md-icon-button md-dense" @click="debug()">
-          <md-tooltip>Debug hacks</md-tooltip>
-          <md-icon>extension</md-icon>
+        <md-button v-for="tool in tools"
+                   :key="tool.name"
+                   class="md-icon-button md-dense"
+                   v-bind:class="{ 'md-raised': currentTool === tool.name }"
+                   @click="selectTool(tool.name)">
+          <md-tooltip>{{ tool.tooltip }}</md-tooltip>
+          <md-icon>{{ tool.icon }}</md-icon>
         </md-button>
-        <md-button class="md-icon-button md-dense" @click="selectPaint()">
-          <md-tooltip>Add Tiles to the current layer</md-tooltip>
-          <md-icon>edit</md-icon>
-        </md-button>
+        <hr>
+        <div>
+          <div v-if="currentTool === 'Zoom'">
+            <md-radio v-model="invert" :value="false">Zoom In</md-radio>
+            <md-radio v-model="invert" :value="true">Zoom Out</md-radio>
+          </div>
+          <div v-else-if="currentTool === 'Pan'">
+            panning
+          </div>
+        </div>
       </aside>
       <canvas ref="canvas"></canvas>
     </div>
@@ -44,6 +59,11 @@ export default {
   },
   data: () => {
     return {
+      tools: [
+        { name: 'Pan', tooltip: 'Pan the level.', icon: 'pan_tool' },
+        { name: 'Paint', tooltip: 'Add tiles to the level.', icon: 'edit' },
+        { name: 'Zoom', tooltip: 'Change the zoom the level.', icon: 'zoom_in' }
+      ],
       currentLayer: 0,
       scale: 2,
       x: 0,
@@ -56,10 +76,19 @@ export default {
       mouseoutHandler: null,
       mouseoverHandler: null,
       mouseX: 0,
-      mouseY: 0
+      mouseY: 0,
+      toolCleanup: null,
+      alt: false,
+      meta: false,
 
-      // selectedTileGroup
-      // ...
+      currentTool: null,
+
+      // for the zoom tool
+      invert: false,
+
+      // For paint tool
+      selectedTileGroup: null,
+      selectedQuadBatch: null
     }
   },
   beforeDestroy: function () {
@@ -68,6 +97,8 @@ export default {
       app = null
     }
     window.removeEventListener('resize', this.resize)
+    window.removeEventListener('keydown', this.globalKeydownHandler)
+    window.removeEventListener('keyup', this.globalKeyupHandler)
   },
   mounted: function () {
     // If db is null, kick out to '/'.
@@ -77,6 +108,8 @@ export default {
     }
     this.$nextTick(() => {
       window.addEventListener('resize', this.resize)
+      window.addEventListener('keydown', this.globalKeydownHandler)
+      window.addEventListener('keyup', this.globalKeyupHandler)
     })
     this.$store.dispatch('Textures/LOAD').then(() => {
       return new Promise((resolve, reject) => {
@@ -155,7 +188,7 @@ export default {
       })
 
       // Configure default mouse handlers with the delegators by selecting the Pan tool.
-      this.selectPan()
+      this.selectTool('Pan')
 
       app.stage.layerChild.scale.x = this.scale
       app.stage.layerChild.scale.y = this.scale
@@ -230,19 +263,59 @@ export default {
       this.focus(f)
     },
 
+    selectTool (name) {
+      this.currentTool = null
+      if (this.toolCleanup) {
+        this.toolCleanup()
+        this.toolCleanup = this.selectNone
+      }
+      this['select' + name]()
+      this.currentTool = name
+    },
+
     selectNone () {
       this.mousedownHandler = null
       this.mouseupHandler = null
       this.mousemoveHandler = null
       this.mouseoutHandler = null
       this.mouseoverHandler = null
+
+      this.toolCleanup = null
+    },
+
+    selectZoom () {
+      this.toolCleanup = null
+      this.mousedownHandler = (e) => {
+        if (this.invert) {
+          this.zoomOut()
+        } else {
+          this.zoomIn()
+        }
+      }
     },
 
     selectPaint () {
-      this.selectNone()
-      // TODO!
-      // Auto-select a QuadBatch to operate on.
-      // Auto-select a tile group to randomly pick tiles from.`
+      this.selectedQuadBatch = null
+      this.selectedTileGroup = null
+
+      // TODO(griffithsh): Auto-select a QuadBatch to operate on.
+      for (let l of this.$store.state.LevelDetails.layers) {
+        if (l.Index === this.currentLayer) {
+          for (let b of this.$store.state.LevelDetails.quadBatches) {
+            if (b.LevelLayer_Id === l.Id) {
+              // This is the first quadbatch of this layer, it's as good as any other.
+              this.selectedQuadBatch = b
+              break
+            }
+          }
+        }
+      }
+
+      // TODO(griffithsh): Auto-select a tile group to randomly pick tiles from.
+      // ... go through all the tilegroups, discarding ones that use a texture
+      // other than the one the selected quadbatch uses, and select the first
+      // one encountered...
+
       // Set mouse cursor to be a semi-transparent image of the first tile in the selected tile group.
       let tile = this.$store.state.Tiles.tiles[11]
       let texture = PIXI.loader.resources[String(tile.Texture_Id)].texture
@@ -263,6 +336,23 @@ export default {
       }
 
       // When you `mousedown`, the selected tile group is placed.
+      this.mousedownHandler = () => {
+        let q = {
+          Id: undefined,
+          QuadBatch_Id: null,
+          WorldLocationX: sprite.x,
+          WorldLocationY: sprite.y,
+          Tile_Id: tile.Id
+        }
+        console.log('TODO(griffithsh): commit new quad!', q)
+        app.stage.layerChild.removeChild(sprite)
+      }
+
+      // Custom cleanup to remove the sprite
+      this.toolCleanup = () => {
+        this.selectNone()
+        app.stage.layerChild.removeChild(sprite)
+      }
     },
 
     selectPan () {
@@ -277,6 +367,7 @@ export default {
         // in the middle of.
         this.mousemoveHandler = null
       }
+      this.toolCleanup = this.selectNone
     },
 
     handlePan (e) {
@@ -333,7 +424,7 @@ export default {
       app.stage.layerChild.y = -1 * ((s * point.y) - (h / 2))
     },
 
-    // getFocus returns the level coordinates that are currently at the center of the screen
+    // getFocus returns the level coordinates that are currently at the center of the screen.
     getFocus () {
       if (!app) {
         return {
@@ -455,6 +546,26 @@ export default {
       }
     },
 
+    globalKeydownHandler (e) {
+      // console.log('key down:', e)
+      this.invert = !this.invert
+      if (e.key === 'Meta') {
+        this.meta = true
+      } else if (e.key === 'Alt') {
+        this.alt = true
+      }
+    },
+
+    globalKeyupHandler (e) {
+      // console.log('key up:', e)
+      this.invert = !this.invert
+      if (e.key === 'Meta') {
+        this.meta = false
+      } else if (e.key === 'Alt') {
+        this.alt = false
+      }
+    },
+
     resize (e) {
       let w = this.$refs.canvas.offsetWidth
       let h = this.$refs.canvas.offsetHeight
@@ -485,9 +596,12 @@ h1, footer {
   height:100%;
 }
 #world-painter>.middle>aside {
-  width:200px;
-  min-width:200px;
+  width:212px;
+  min-width:212px;
   padding-top:8px
+}
+#world-painter>.middle>aside>div {
+  padding:0px 12px;
 }
 #world-painter>footer {
   padding:0.1rem;

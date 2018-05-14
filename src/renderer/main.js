@@ -21,6 +21,7 @@ import {
   MdEmptyState,
   MdIcon,
   MdList,
+  MdRadio,
   MdSnackbar,
   MdToolbar,
   MdTooltip
@@ -35,6 +36,7 @@ Vue.use(MdDrawer)
 Vue.use(MdEmptyState)
 Vue.use(MdIcon)
 Vue.use(MdList)
+Vue.use(MdRadio)
 Vue.use(MdSnackbar)
 Vue.use(MdToolbar)
 Vue.use(MdTooltip)
