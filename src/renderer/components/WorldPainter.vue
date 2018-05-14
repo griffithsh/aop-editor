@@ -49,6 +49,10 @@
 <script>
 import * as PIXI from 'pixi.js'
 
+function tmpId () {
+  return Math.random().toString(36).substring(2, 15)
+}
+
 var app = null
 
 export default {
@@ -338,14 +342,13 @@ export default {
       // When you `mousedown`, the selected tile group is placed.
       this.mousedownHandler = () => {
         let q = {
-          Id: undefined,
+          Id: tmpId(),
           QuadBatch_Id: null,
           WorldLocationX: sprite.x,
           WorldLocationY: sprite.y,
           Tile_Id: tile.Id
         }
         console.log('TODO(griffithsh): commit new quad!', q)
-        app.stage.layerChild.removeChild(sprite)
       }
 
       // Custom cleanup to remove the sprite
