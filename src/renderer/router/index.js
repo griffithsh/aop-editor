@@ -21,8 +21,8 @@ export default new Router({
       component: require('@/components/LevelList').default
     },
     {
-      path: '/world-painter/:Level_Id',
-      props: (route) => ({ Level_Id: parseInt(route.params.Level_Id) }),
+      path: '/world-painter/:LevelId',
+      props: (route) => ({ LevelId: parseInt(route.params.LevelId) }),
       name: 'world-painter',
       component: require('@/components/WorldPainter').default
     },

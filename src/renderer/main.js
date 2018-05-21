@@ -17,6 +17,7 @@ import {
   MdCard,
   MdCheckbox,
   MdContent,
+  MdDialog,
   MdDrawer,
   MdEmptyState,
   MdIcon,
@@ -32,6 +33,7 @@ Vue.use(MdButton)
 Vue.use(MdCard)
 Vue.use(MdCheckbox)
 Vue.use(MdContent)
+Vue.use(MdDialog)
 Vue.use(MdDrawer)
 Vue.use(MdEmptyState)
 Vue.use(MdIcon)

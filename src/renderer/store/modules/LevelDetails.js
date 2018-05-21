@@ -151,6 +151,7 @@ const mutations = {
   APPEND_QUAD (state, quad) {
     state.quads.push(quad)
     state.quadsByBatch[quad.QuadBatch_Id] ? state.quadsByBatch[quad.QuadBatch_Id].push(quad) : state.quadsByBatch[quad.QuadBatch_Id] = [quad]
+    console.log('new state after appending', state)
   }
 }
 
