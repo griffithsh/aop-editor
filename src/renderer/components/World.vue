@@ -243,6 +243,32 @@ export default {
       this.$router.push('/level-list')
     },
 
+    ascendLayer () {
+      let target = null
+      for (let i = 0; i < this.$store.state.LevelDetails.layers.length; i++) {
+        if (this.$store.state.LevelDetails.layers[i].Id === this.$store.state.World.layerId) {
+          target = i + 1
+          break
+        }
+      }
+      if (target !== null && target < this.$store.state.LevelDetails.layers.length) {
+        this.$store.commit('World/SET_LAYER_ID', this.$store.state.LevelDetails.layers[target].Id)
+        this.redraw()
+      }
+    },
+    descendLayer () {
+      let target = null
+      for (let i = 0; i < this.$store.state.LevelDetails.layers.length; i++) {
+        if (this.$store.state.LevelDetails.layers[i].Id === this.$store.state.World.layerId) {
+          target = i - 1
+          break
+        }
+      }
+      if (target !== null && target >= 0) {
+        this.$store.commit('World/SET_LAYER_ID', this.$store.state.LevelDetails.layers[target].Id)
+        this.redraw()
+      }
+    },
     zoomIn () {
       if (this.scale >= 8) {
         return
@@ -485,6 +511,10 @@ export default {
       } else if (e.key === ' ') {
         // TODO set global grabber icon
         this.panning = true
+      } else if (e.key === 'j') {
+        this.descendLayer()
+      } else if (e.key === 'k') {
+        this.ascendLayer()
       }
     },
 
