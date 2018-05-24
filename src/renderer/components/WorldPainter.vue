@@ -11,26 +11,22 @@
       </md-button>
       <hr>
       <div>
-        <div v-if="currentTool === 'Zoom'">
-          <md-radio v-model="invert" :value="false">Zoom In</md-radio>
-          <md-radio v-model="invert" :value="true">Zoom Out</md-radio>
-        </div>
-        <div v-else-if="currentTool === 'Pan'">
-          panning
-        </div>
-        <div v-else-if="currentTool === 'Paint'">
+        <div v-if="currentTool === 'Paint'">
           <md-card class="select-quad-batch">
             <md-button @click="showSelectBatch = true" class="md-icon-button" style="float:right">
               <md-icon>edit</md-icon>
             </md-button>
-            <span class="md-subheading">{{ selectedQuadBatch.texture }}</span> <span class="md-caption">[{{ selectedQuadBatch.Id }}]</span><br><span class="md-caption">{{ selectedQuadBatch.quads }} quads at elevation {{ selectedQuadBatch.ZIndex }}</span>
+            <span class="md-subheading">{{ selectedQuadBatch.texture }}</span>
+            <span class="md-caption">[{{ selectedQuadBatch.Id }}]</span>
+            <br>
+            <span class="md-caption">{{ selectedQuadBatch.quads }} quads at elevation {{ selectedQuadBatch.ZIndex }}</span>
           </md-card>
           <md-dialog :md-active.sync="showSelectBatch">
             <md-dialog-title>Select QuadBatch</md-dialog-title>
             <md-dialog-content style="width:500px;padding:8px;">
               <md-card v-for="batch in quadBatches" :key="batch.Id" class="select-quad-batch" style="width:48%;display:inline-block">
                 <span class="md-subheading">{{ batch.texture }}</span> <span class="md-caption">[{{ batch.Id }}]</span><br><span class="md-caption">{{ batch.quads }} quads at elevation {{ batch.ZIndex }}</span>
-                <md-button class="md-icon-button md-primary" @click="showSelectBatch = false;selectedQuadBatch = batch">
+                <md-button class="md-icon-button md-primary" @click="selectQuadBatch(batch)">
                   <md-icon v-if="batch.Id == selectedQuadBatch.Id">check_box</md-icon>
                   <md-icon v-else>check_box_outline_blank</md-icon>
                 </md-button>
@@ -48,7 +44,36 @@
               </md-button>
             </md-dialog-actions>
           </md-dialog>
-          v-for of buttons to select the TileGroup
+          <md-card class="select-tile-group">
+            <md-button @click="showSelectGroup = true" class="md-icon-button" style="float:right">
+              <md-icon>edit</md-icon>
+            </md-button>
+            <span class="md-subheading">{{ selectedTileGroup.description }}</span>
+            <br>
+            <span class="md-caption">{{ selectedTileGroup.tiles.length }} tile(s)</span>
+          </md-card>
+          <md-dialog :md-active.sync="showSelectGroup">
+            <md-dialog-title>Select Tile Group</md-dialog-title>
+            <md-dialog-content>
+              <md-card v-for="group in tileGroups" :key="group.description" class="select-tile-group" style="width:48%;display:inline-block">
+                <span class="md-subheading">{{ group.description }}</span>
+                <br>
+                <span class="md-caption">{{ group.tiles.length }} tile(s)</span>
+                <md-button class="md-icon-button md-primary" @click="selectTileGroup(group)">
+                  <md-icon v-if="group.description == selectedTileGroup.description">check_box</md-icon>
+                  <md-icon v-else>check_box_outline_blank</md-icon>
+                </md-button>
+                <md-tooltip>
+                  <div style="background-color:#000;">{{ group.texture.filename}}</div>
+                </md-tooltip>
+              </md-card>
+            </md-dialog-content>
+            <md-dialog-actions>
+              <md-button class="md-primary" @click="showSelectGroup = false">
+                Cancel
+              </md-button>
+            </md-dialog-actions>
+          </md-dialog>
         </div>
       </div>
     </template>
@@ -56,8 +81,7 @@
 </template>
 
 <script>
-import * as PIXI from 'pixi.js'
-import { without } from 'lodash'
+import { without, sample } from 'lodash'
 import World from './World'
 
 function tmpId () {
@@ -79,15 +103,19 @@ export default {
       currentTool: null,
 
       // For paint tool
-      selectedTileGroup: {},
+      selectedTileGroup: { tiles: [] },
       selectedQuadBatch: {},
-      showSelectBatch: false
+      showSelectBatch: false,
+      showSelectGroup: false
     }
   },
   beforeDestroy: function () {
     this.$store.commit('World/UNSET_CURSOR')
   },
   computed: {
+    layerId () {
+      return this.$store.state.World.layerId
+    },
     quadBatches () {
       let tiles = this.$store.state.Tiles.tiles
       return without(this.$store.state.LevelDetails.quadBatches.map((b) => {
@@ -96,21 +124,69 @@ export default {
         }
         let qs = this.$store.state.LevelDetails.quadsByBatch[b.Id] || []
         let textureId = qs.length ? tiles[qs[0].Tile_Id].Texture_Id : null
-        let textureName = ''
-        let image = ''
-        for (let i = 0; i < this.$store.state.Textures.list.length; i++) {
-          if (textureId === this.$store.state.Textures.list[i].id) {
-            textureName = this.$store.state.Textures.list[i].filename
-            image = this.$store.state.Textures.list[i].dataUri
-            break
-          }
-        }
+        let texture = this.$store.state.Textures.byId[textureId] || {}
+        let textureName = texture.filename
+        let image = texture.dataUri
         return Object.assign({}, b, {
           quads: qs.length,
           texture: textureName,
+          textureId: textureId,
           img: image
         })
       }), null)
+    },
+
+    // tileGroups are the Tiles that are available to add to the current
+    // quadbatch, grouped. If Tiles in the database do not have a TileGroup,
+    // then they form their own group, with only the one tile.
+    tileGroups () {
+      let result = []
+      let tilesByTileGroupId = {}
+      for (let prop in this.$store.state.Tiles.tiles) {
+        let tile = this.$store.state.Tiles.tiles[prop]
+        if (tile.Texture_Id === this.selectedQuadBatch.textureId) {
+          if (tile.TileGroup_Id) {
+            // This tile has a Tile Group.
+            if (tilesByTileGroupId[tile.TileGroup_Id]) {
+              // This tilegroup has already been created.
+              tilesByTileGroupId[tile.TileGroup_Id].tiles.push(tile.Id)
+            } else {
+              // This Tile group needs to be initialised.
+              tilesByTileGroupId[tile.TileGroup_Id] = {
+                texture: this.$store.state.Textures.byId[tile.Texture_Id],
+                description: 'TileGroup: ' + tile.TileGroup_Id,
+                tiles: [tile.Id]
+              }
+            }
+          } else {
+            // This tile is un-grouped.
+            result.push({
+              texture: this.$store.state.Textures.byId[tile.Texture_Id],
+              description: 'ungrouped Tile: ' + tile.Id,
+              tiles: [tile.Id]
+            })
+          }
+        }
+      }
+      let groups = []
+      for (let prop in tilesByTileGroupId) {
+        let group = tilesByTileGroupId[prop]
+        groups.push(group)
+      }
+      console.log('tileGroups:', tilesByTileGroupId, groups, result)
+      return groups.concat(result)
+    }
+  },
+  watch: {
+    layerId () {
+      this.autoSelectQuadBatch()
+      this.autoSelectTileGroup()
+    },
+    selectedQuadBatch (now, was) {
+      this.autoSelectTileGroup()
+    },
+    selectedTileGroup (now, was) {
+      this.$store.commit('World/SET_CURSOR', now.tiles[0])
     }
   },
   methods: {
@@ -133,55 +209,36 @@ export default {
       this.toolCleanup = null
     },
 
-    selectPaint () {
-      this.selectedQuadBatch = {}
-      this.selectedTileGroup = {}
+    selectQuadBatch (batch) {
+      this.showSelectBatch = false
+      this.selectedQuadBatch = batch
+      this.autoSelectTileGroup()
+    },
 
-      // TODO(griffithsh): Auto-select a QuadBatch to operate on.
-      for (let l of this.$store.state.LevelDetails.layers) {
-        if (l.Id === this.$store.state.World.layerId) {
-          for (let b of this.$store.state.LevelDetails.quadBatches) {
-            if (b.LevelLayer_Id === l.Id) {
-              // This is the first quadbatch of this layer, it's as good as any other.
+    autoSelectQuadBatch () {
+      this.selectedQuadBatch = this.quadBatches[0]
+    },
+    selectTileGroup (group) {
+      this.showSelectGroup = false
+      this.selectedTileGroup = group
+    },
 
-              // omg
-              let qs = this.$store.state.LevelDetails.quadsByBatch[b.Id] || []
-              let tiles = this.$store.state.Tiles.tiles
-              let textureId = qs.length ? tiles[qs[0].Tile_Id].Texture_Id : null
-              let textureName = ''
-              let image = ''
-              for (let i = 0; i < this.$store.state.Textures.list.length; i++) {
-                if (textureId === this.$store.state.Textures.list[i].id) {
-                  textureName = this.$store.state.Textures.list[i].filename
-                  image = this.$store.state.Textures.list[i].dataUri
-                  break
-                }
-              }
-              this.selectedQuadBatch = Object.assign({}, b, {
-                quads: qs.length,
-                texture: textureName,
-                img: image
-              })
-              break
-            }
-          }
-        }
+    // autoSelectTileGroup picks a tile group from the available tile groups.
+    autoSelectTileGroup () {
+      this.selectedTileGroup = this.tileGroups[0]
+      if (this.currentTool) {
+        console.log('setting cursor due to currentTool', this.currentTool)
+        this.$store.commit('World/SET_CURSOR', this.selectedTileGroup.tiles[0])
+      } else {
+        console.log('NOT setting cursor due to currentTool', this.currentTool)
       }
+    },
 
-      // TODO(griffithsh): Auto-select a tile group to randomly pick tiles from.
-      // ... go through all the tilegroups, discarding ones that use a texture
-      // other than the one the selected quadbatch uses, and select the first
-      // one encountered...
+    selectPaint () {
+      this.autoSelectQuadBatch()
+      this.autoSelectTileGroup()
 
-      // Set mouse cursor to be a semi-transparent image of the first tile in the selected tile group.
-      let tile = this.$store.state.Tiles.tiles[11]
-      let texture = PIXI.loader.resources[String(tile.Texture_Id)].texture
-      texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST
-      let frame = new PIXI.Rectangle(tile.TextureX, tile.TextureY, tile.Width, tile.Height)
-      let sprite = new PIXI.Sprite(new PIXI.Texture(texture, frame))
-      sprite.alpha = 0
-
-      this.$store.commit('World/SET_CURSOR', tile.Id)
+      this.$store.commit('World/SET_CURSOR', this.selectedTileGroup.tiles[0])
 
       this.$store.commit('World/SET_TOOL', {
         name: 'Paint',
@@ -192,7 +249,7 @@ export default {
               QuadBatch_Id: this.selectedQuadBatch.Id,
               WorldLocationX: cursor.x,
               WorldLocationY: cursor.y,
-              Tile_Id: tile.Id // TODO(griffithsh): select randomly from tile group
+              Tile_Id: sample(this.selectedTileGroup.tiles)
             }
             console.log('TODO(griffithsh): commit new quad!', q)
             this.$store.commit('LevelDetails/APPEND_QUAD', q)
@@ -209,9 +266,8 @@ export default {
 </script>
 
 <style>
-.select-quad-batch {
+.select-quad-batch, .select-tile-group {
   padding:4px;
   margin:4px;
-  cursor:pointer;
 }
 </style>

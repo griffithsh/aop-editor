@@ -40,7 +40,7 @@ const mutations = {
 
   // You can set a Tile as the cursor
   SET_CURSOR (state, tileId) {
-    console.log('set cursor')
+    console.log('set cursor', tileId)
     state.cursorTileId = tileId
   },
   UNSET_CURSOR (state) {

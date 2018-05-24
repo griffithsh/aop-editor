@@ -51,12 +51,19 @@ let timeout = null
 
 const state = {
   list: [],
-  unregistered: []
+  unregistered: [],
+
+  // byId is a map of textures keyed by their Texture_Id. It does not contain
+  // unregistered textures.
+  byId: {}
 }
 
 const mutations = {
   ASSIGN (state, textures) {
     state.list = textures
+    for (let texture in textures) {
+      state.byId[texture.id] = texture
+    }
   },
 
   ASSIGN_UNREGISTERED (state, files) {
@@ -66,6 +73,7 @@ const mutations = {
   // APPEND to the texture list
   APPEND (state, texture) {
     state.list.push(texture)
+    state.byId[texture.id] = texture
   },
 
   // APPEND_UNREGISTERED file to the unregistered list
