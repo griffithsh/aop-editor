@@ -12,6 +12,7 @@
       <hr>
       <div>
         <div v-if="currentTool === 'Paint'">
+          <span class="md-title" style="padding:8px">QuadBatch</span>
           <md-card class="select-quad-batch">
             <md-button @click="showSelectBatch = true" class="md-icon-button" style="float:right">
               <md-icon>edit</md-icon>
@@ -31,7 +32,7 @@
                   <md-icon v-else>check_box_outline_blank</md-icon>
                 </md-button>
                 <md-tooltip>
-                  <div style="background-color:#000;"><img :src="batch.img" width="256px"/></div>
+                  <img :src="batch.img" width="256px" style="background-color:#000"/>
                 </md-tooltip>
               </md-card>
             </md-dialog-content>
@@ -44,6 +45,8 @@
               </md-button>
             </md-dialog-actions>
           </md-dialog>
+          <br>
+          <span class="md-title" style="padding:8px">Tile</span>
           <md-card class="select-tile-group">
             <md-button @click="showSelectGroup = true" class="md-icon-button" style="float:right">
               <md-icon>edit</md-icon>
@@ -52,6 +55,11 @@
             <br>
             <span class="md-caption">{{ selectedTileGroup.tiles.length }} tile(s)</span>
           </md-card>
+          <image-slice :url="selectedTileGroup.texture.dataUri"
+                        :x="selectedTileGroup.first.TextureX"
+                        :y="selectedTileGroup.first.TextureY"
+                        :width="selectedTileGroup.first.Width"
+                        :height="selectedTileGroup.first.Height"/>
           <md-dialog :md-active.sync="showSelectGroup">
             <md-dialog-title>Select Tile Group</md-dialog-title>
             <md-dialog-content>
@@ -64,7 +72,11 @@
                   <md-icon v-else>check_box_outline_blank</md-icon>
                 </md-button>
                 <md-tooltip>
-                  <div style="background-color:#000;">{{ group.texture.filename}}</div>
+                  <image-slice :url="group.texture.dataUri"
+                                :x="group.first.TextureX"
+                                :y="group.first.TextureY"
+                                :width="group.first.Width"
+                                :height="group.first.Height"/>
                 </md-tooltip>
               </md-card>
             </md-dialog-content>
@@ -82,6 +94,7 @@
 
 <script>
 import { without, sample } from 'lodash'
+import ImageSlice from './ImageSlice'
 import World from './World'
 
 function tmpId () {
@@ -90,7 +103,7 @@ function tmpId () {
 
 export default {
   name: 'world-painter',
-  components: { World },
+  components: { ImageSlice, World },
   props: {
     LevelId: Number
   },
@@ -125,13 +138,11 @@ export default {
         let qs = this.$store.state.LevelDetails.quadsByBatch[b.Id] || []
         let textureId = qs.length ? tiles[qs[0].Tile_Id].Texture_Id : null
         let texture = this.$store.state.Textures.byId[textureId] || {}
-        let textureName = texture.filename
-        let image = texture.dataUri
         return Object.assign({}, b, {
           quads: qs.length,
-          texture: textureName,
-          textureId: textureId,
-          img: image
+          texture: texture.filename,
+          textureId: texture.id,
+          img: texture.dataUri
         })
       }), null)
     },
@@ -154,8 +165,10 @@ export default {
               // This Tile group needs to be initialised.
               tilesByTileGroupId[tile.TileGroup_Id] = {
                 texture: this.$store.state.Textures.byId[tile.Texture_Id],
+                // FIXME(hgriffiths): description should be the description field in the DB.
                 description: 'TileGroup: ' + tile.TileGroup_Id,
-                tiles: [tile.Id]
+                tiles: [tile.Id],
+                first: tile
               }
             }
           } else {
@@ -163,7 +176,8 @@ export default {
             result.push({
               texture: this.$store.state.Textures.byId[tile.Texture_Id],
               description: 'ungrouped Tile: ' + tile.Id,
-              tiles: [tile.Id]
+              tiles: [tile.Id],
+              first: tile
             })
           }
         }
@@ -186,7 +200,9 @@ export default {
       this.autoSelectTileGroup()
     },
     selectedTileGroup (now, was) {
-      this.$store.commit('World/SET_CURSOR', now.tiles[0])
+      if (this.currentTool) {
+        this.$store.commit('World/SET_CURSOR', now.tiles[0])
+      }
     }
   },
   methods: {
