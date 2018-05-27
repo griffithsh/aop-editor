@@ -576,6 +576,8 @@ h1, footer {
 #world>footer {
   padding:0.1rem;
   height:1.2rem;
+  white-space: nowrap;
+  overflow:hidden;
 }
 #world canvas {
   width: 100%;
