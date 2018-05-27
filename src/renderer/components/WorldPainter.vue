@@ -123,7 +123,8 @@ export default {
     }
   },
   beforeDestroy: function () {
-    this.$store.commit('World/UNSET_CURSOR')
+    this.$store.commit('World/SET_CURSOR', 0)
+    this.selectNone()
   },
   computed: {
     layerId () {
@@ -223,6 +224,7 @@ export default {
       this.mouseoverHandler = null
 
       this.toolCleanup = null
+      this.$store.commit('World/UNSET_TOOL')
     },
 
     selectQuadBatch (batch) {
@@ -243,10 +245,9 @@ export default {
     autoSelectTileGroup () {
       this.selectedTileGroup = this.tileGroups[0]
       if (this.currentTool) {
-        console.log('setting cursor due to currentTool', this.currentTool)
         this.$store.commit('World/SET_CURSOR', this.selectedTileGroup.tiles[0])
       } else {
-        console.log('NOT setting cursor due to currentTool', this.currentTool)
+        this.$store.commit('World/SET_CURSOR', 0)
       }
     },
 
@@ -272,8 +273,7 @@ export default {
           })
         },
         cleanup: () => {
-          console.log('cleanup Paint tool')
-          this.$store.commit('World/UNSET_CURSOR')
+          this.$store.commit('World/SET_CURSOR', 0)
         }
       })
     }

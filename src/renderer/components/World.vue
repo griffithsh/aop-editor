@@ -57,6 +57,13 @@ export default {
       app.destroy()
       app = null
     }
+    if (app && cursor) {
+      // remove sprite
+      app.stage.layerChild.removeChild(cursor)
+    }
+    if (cursor) {
+      cursor = null
+    }
     window.removeEventListener('resize', this.resize)
     window.removeEventListener('keydown', this.globalKeydownHandler)
     window.removeEventListener('keyup', this.globalKeyupHandler)
@@ -116,6 +123,10 @@ export default {
       s.height = ch
       s.alpha = 0.25
       app.stage.addChild(s)
+
+      if (!this.cursorId) {
+        cursor = null
+      }
 
       this.redraw()
 
@@ -187,7 +198,7 @@ export default {
     })
   },
   computed: {
-    cursor () {
+    cursorId () {
       return this.$store.state.World.cursorTileId
     },
     cursorRequester () {
@@ -208,7 +219,7 @@ export default {
   },
   watch: {
     quads (now, was) {
-      console.log('quads changed')
+      console.log(`watch.quads: was ${was.length}, now ${now.length}`)
       this.redraw()
     },
     tool (now, was) {
@@ -216,8 +227,7 @@ export default {
         was.cleanup()
       }
     },
-    cursor (now, was) {
-      console.log('removing cursor', was, 'for', now)
+    cursorId (now, was) {
       if (was && app && cursor) {
         // remove sprite
         app.stage.layerChild.removeChild(cursor)
