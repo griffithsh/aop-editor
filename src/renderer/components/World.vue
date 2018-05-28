@@ -49,7 +49,8 @@ export default {
       mouseY: 0,
       alt: false,
       meta: false,
-      panning: false
+      panning: false,
+      spritesByQuad: {}
     }
   },
   beforeDestroy: function () {
@@ -417,6 +418,7 @@ export default {
         app.stage.layerChild = new PIXI.Container()
         app.stage.addChild(app.stage.layerChild)
       }
+      this.spritesByQuad = {}
 
       for (let layer of this.$store.state.LevelDetails.layers) {
         let container = new PIXI.Container()
@@ -439,6 +441,8 @@ export default {
             lowest = lowest >= sprite.y + tile.Height ? lowest : sprite.y + tile.Height
 
             batchContainer.addChild(sprite)
+            this.spritesByQuad[quad.Id] = sprite
+            sprite.Quad_Id = quad.Id
           }
           batchContainer.aop = {
             z: batch.ZIndex,
@@ -545,6 +549,47 @@ export default {
       app.renderer.resize(w, h)
       app.stage.children[0].width = w
       app.stage.children[0].height = h
+    },
+
+    // quadAtClick returns the sprite (if any) that is at the location clicked on in e.
+    quadAt (x, y) {
+      let found = []
+      for (let b of this.$store.state.LevelDetails.batchesByLayer[this.$store.state.World.layerId]) {
+        for (let q of this.$store.state.LevelDetails.quadsByBatch[b.Id]) {
+          // every quad in this LevelLayer...
+          if (x > q.WorldLocationX && y > q.WorldLocationY) {
+            // get tile ...
+            let t = this.$store.state.Tiles.tiles[q.Tile_Id]
+            if (x < q.WorldLocationX + t.Width && y < q.WorldLocationY + t.Height) {
+              // This quad is underneath where the user clicked.
+              let s = this.spritesByQuad[q.Id]
+              found.push({
+                sprite: s,
+                z: b.ZIndex,
+                y: q.WorldLocationY + t.Height
+              })
+            }
+          }
+        }
+      }
+
+      // Sort all found sprites so that the visually topmost one can be
+      // returned.
+      found.sort((a, b) => {
+        if (a.z !== b.z) {
+          return b.z - a.z
+        }
+        return b.y - a.y
+      })
+      return found.length ? found[0].sprite : null
+    },
+
+    // clickToLevel accepts a Mouse event, and returns the Level-relative coordinates of the event.
+    clickToLevel (e) {
+      return {
+        x: (e.layerX - app.stage.layerChild.x) / this.scale,
+        y: (e.layerY - app.stage.layerChild.y) / this.scale
+      }
     }
   }
 }

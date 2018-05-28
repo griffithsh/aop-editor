@@ -151,6 +151,20 @@ const mutations = {
   APPEND_QUAD (state, quad) {
     state.quads.push(quad)
     state.quadsByBatch[quad.QuadBatch_Id] ? state.quadsByBatch[quad.QuadBatch_Id].push(quad) : state.quadsByBatch[quad.QuadBatch_Id] = [quad]
+  },
+  REPOSITION_QUAD (state, data) {
+    for (let q of state.quads) {
+      if (q.Id === data.Id) {
+        // mutate the quad - data.x and data.y
+        if (q.WorldLocationX !== data.x || q.WorldLocationY !== data.y) {
+          // mutate
+          q.WorldLocationX = data.x
+          q.WorldLocationY = data.y
+          q.dirty = true
+          console.log(`REPOSITION_QUAD: set Quad ${data.Id} to ${data.x}/${data.y}`)
+        }
+      }
+    }
   }
 }
 

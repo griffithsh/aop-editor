@@ -1,5 +1,5 @@
 <template>
-  <world :level-id="LevelId">
+  <world :level-id="LevelId" ref="world">
     <template slot="tools">
       <md-button v-for="tool in tools"
                 :key="tool.name"
@@ -87,6 +87,13 @@
             </md-dialog-actions>
           </md-dialog>
         </div>
+        <div v-else-if="currentTool === 'Picker'">
+          <!-- Picking existing quads ... -->
+          <md-button @click="deletePicked()" class="md-icon-button" :disabled="!pickedSprite">
+            <md-icon>delete</md-icon>
+            <md-tooltip>Delete the selected Tile</md-tooltip>
+          </md-button>
+        </div>
       </div>
     </template>
   </world>
@@ -110,7 +117,8 @@ export default {
   data: () => {
     return {
       tools: [
-        { name: 'Paint', tooltip: 'Add tiles to the level.', icon: 'edit' }
+        { name: 'Paint', tooltip: 'Add tiles to the Level.', icon: 'add' },
+        { name: 'Picker', tooltip: 'Pick Tiles in the Level.', icon: 'search' }
       ],
 
       currentTool: null,
@@ -119,7 +127,10 @@ export default {
       selectedTileGroup: { tiles: [] },
       selectedQuadBatch: {},
       showSelectBatch: false,
-      showSelectGroup: false
+      showSelectGroup: false,
+
+      pickerDragging: false,
+      pickedSprite: null
     }
   },
   beforeDestroy: function () {
@@ -274,6 +285,61 @@ export default {
         },
         cleanup: () => {
           this.$store.commit('World/SET_CURSOR', 0)
+        }
+      })
+    },
+
+    deletePicked () {
+      if (this.pickedSprite) {
+        console.log('TODO(griffithsh): delete quad', this.pickedSprite.Quad_Id)
+      }
+    },
+
+    selectPicker () {
+      this.$store.commit('World/SET_TOOL', {
+        name: 'Picker',
+        down: (e) => {
+          if (this.pickedSprite) {
+            this.pickedSprite.alpha = 1
+            this.pickedSprite = null
+          }
+          let coords = this.$refs.world.clickToLevel(e)
+          this.pickedSprite = this.$refs.world.quadAt(coords.x, coords.y)
+          if (this.pickedSprite) {
+            this.pickerDragging = true
+            this.pickedSprite.alpha = 0.25
+          }
+        },
+        up: () => {
+          if (this.pickerDragging) {
+            this.pickerDragging = false
+            this.pickedSprite.alpha = 0.5
+            this.$store.commit('LevelDetails/REPOSITION_QUAD', {
+              Id: this.pickedSprite.Quad_Id,
+              x: this.pickedSprite.x,
+              y: this.pickedSprite.y
+            })
+          }
+        },
+        out: () => {
+          if (this.pickerDragging) {
+            this.pickerDragging = false
+            this.pickedSprite.alpha = 0.5
+            this.$store.commit('LevelDetails/REPOSITION_QUAD', {
+              Id: this.pickedSprite.Quad_Id,
+              x: this.pickedSprite.x,
+              y: this.pickedSprite.y
+            })
+          }
+        },
+        move: (e) => {
+          if (this.pickerDragging) {
+            // Set the sprite we found to the coordinate indicated by the event.
+            let l = this.$refs.world.clickToLevel(e)
+            let s = this.pickedSprite
+            s.x = Math.round(l.x - s.width / 2)
+            s.y = Math.round(l.y - s.height / 2)
+          }
         }
       })
     }
