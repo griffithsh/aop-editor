@@ -32,7 +32,7 @@
 <script>
 import * as PIXI from 'pixi.js'
 var app = null
-var cursor = null
+var registeredTileSprites = []
 
 export default {
   name: 'world',
@@ -58,13 +58,8 @@ export default {
       app.destroy()
       app = null
     }
-    if (app && cursor) {
-      // remove sprite
-      app.stage.layerChild.removeChild(cursor)
-    }
-    if (cursor) {
-      cursor = null
-    }
+    registeredTileSprites = []
+
     window.removeEventListener('resize', this.resize)
     window.removeEventListener('keydown', this.globalKeydownHandler)
     window.removeEventListener('keyup', this.globalKeyupHandler)
@@ -125,10 +120,6 @@ export default {
       s.alpha = 0.25
       app.stage.addChild(s)
 
-      if (!this.cursorId) {
-        cursor = null
-      }
-
       this.redraw()
 
       app.stage.interactive = true
@@ -149,12 +140,6 @@ export default {
         this.mouseX = e.data.originalEvent.offsetX
         this.mouseY = e.data.originalEvent.offsetY
 
-        // If there is a tile cursor move the tile cursor with the mouse.
-        if (cursor) {
-          cursor.x = Math.round((e.data.originalEvent.offsetX - app.stage.layerChild.x) / this.scale) - (cursor.width / 2)
-          cursor.y = Math.round((e.data.originalEvent.offsetY - app.stage.layerChild.y) / this.scale) - (cursor.height / 2)
-        }
-
         // Panning is always checked
         if (this.panning) {
           this.handlePan(e.data.originalEvent)
@@ -168,20 +153,12 @@ export default {
       app.stage.on('mouseout', (e) => {
         this.panning = false
 
-        if (cursor) {
-          cursor.alpha = 0
-        }
-
         if (this.$store.state.World.tool.out) {
           this.$store.state.World.tool.out(e.data.originalEvent)
         }
       })
 
       app.stage.on('mouseover', (e) => {
-        if (cursor) {
-          cursor.alpha = 0.75
-        }
-
         if (this.$store.state.World.tool.over) {
           this.$store.state.World.tool.over(e.data.originalEvent)
         }
@@ -199,12 +176,6 @@ export default {
     })
   },
   computed: {
-    cursorId () {
-      return this.$store.state.World.cursorTileId
-    },
-    cursorRequester () {
-      return this.$store.state.World.cursorRequester
-    },
     details () {
       return this.$store.state.LevelDetails.details
     },
@@ -227,26 +198,6 @@ export default {
       if (was.cleanup) {
         was.cleanup()
       }
-    },
-    cursorId (now, was) {
-      if (was && app && cursor) {
-        // remove sprite
-        app.stage.layerChild.removeChild(cursor)
-        cursor = null
-      }
-      if (now) {
-        // add sprite
-        let tile = this.$store.state.Tiles.tiles[now]
-        let texture = PIXI.loader.resources[String(tile.Texture_Id)].texture
-        texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST
-        let frame = new PIXI.Rectangle(tile.TextureX, tile.TextureY, tile.Width, tile.Height)
-        cursor = new PIXI.Sprite(new PIXI.Texture(texture, frame))
-        cursor.alpha = 0
-        app.stage.layerChild.addChild(cursor)
-      }
-    },
-    cursorRequester (now) {
-      if (now) { now(cursor) }
     }
   },
   methods: {
@@ -502,14 +453,8 @@ export default {
         app.stage.layerChild.addChild(container)
       }
 
-      if (cursor) {
-        // let tile = this.$store.state.Tiles.tiles[this.$store.state.World.cursorTileId]
-        // let texture = PIXI.loader.resources[String(tile.Texture_Id)].texture
-        // texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST
-        // let frame = new PIXI.Rectangle(tile.TextureX, tile.TextureY, tile.Width, tile.Height)
-        // cursor = new PIXI.Sprite(new PIXI.Texture(texture, frame))
-        // cursor.alpha = 0.75
-        app.stage.layerChild.addChild(cursor)
+      for (let rs of registeredTileSprites) {
+        app.stage.layerChild.addChild(rs)
       }
     },
 
@@ -589,6 +534,39 @@ export default {
       return {
         x: (e.layerX - app.stage.layerChild.x) / this.scale,
         y: (e.layerY - app.stage.layerChild.y) / this.scale
+      }
+    },
+
+    // newLevelTile creates a PIXI.Sprite registered to the canvas that respects
+    // zoom and pan of the World, so that the Sprite's x and y can be assigned
+    // with LevelLayer-relative coordinates.
+    newLevelTile (tileId) {
+      console.log('World::newLevelTile:', tileId)
+      let tile = this.$store.state.Tiles.tiles[tileId]
+      if (!tile) {
+        return null
+      }
+      let texture = PIXI.loader.resources[String(tile.Texture_Id)].texture
+      texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST
+      let frame = new PIXI.Rectangle(tile.TextureX, tile.TextureY, tile.Width, tile.Height)
+      let ts = new PIXI.Sprite(new PIXI.Texture(texture, frame))
+      registeredTileSprites.push(ts)
+      app.stage.layerChild.addChild(ts)
+      return ts
+    },
+
+    // destroyLevelTile unregisters PIXI.Sprites added to the level with
+    // newLevelTile().
+    destroyLevelTile (ts) {
+      if (!ts) {
+        return
+      }
+
+      app.stage.layerChild.removeChild(ts)
+      for (let i = 0; i < registeredTileSprites.length; i++) {
+        if (registeredTileSprites[i] === ts) {
+          registeredTileSprites = registeredTileSprites.splice(i, 1)
+        }
       }
     }
   }

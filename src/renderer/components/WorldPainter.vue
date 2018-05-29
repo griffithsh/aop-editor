@@ -56,10 +56,10 @@
             <span class="md-caption">{{ selectedTileGroup.tiles.length }} tile(s)</span>
           </md-card>
           <image-slice :url="selectedTileGroup.texture.dataUri"
-                        :x="selectedTileGroup.first.TextureX"
-                        :y="selectedTileGroup.first.TextureY"
-                        :width="selectedTileGroup.first.Width"
-                        :height="selectedTileGroup.first.Height"/>
+                       :x="selectedTileGroup.first.TextureX"
+                       :y="selectedTileGroup.first.TextureY"
+                       :width="selectedTileGroup.first.Width"
+                       :height="selectedTileGroup.first.Height"/>
           <md-dialog :md-active.sync="showSelectGroup">
             <md-dialog-title>Select Tile Group</md-dialog-title>
             <md-dialog-content>
@@ -73,10 +73,10 @@
                 </md-button>
                 <md-tooltip>
                   <image-slice :url="group.texture.dataUri"
-                                :x="group.first.TextureX"
-                                :y="group.first.TextureY"
-                                :width="group.first.Width"
-                                :height="group.first.Height"/>
+                               :x="group.first.TextureX"
+                               :y="group.first.TextureY"
+                               :width="group.first.Width"
+                               :height="group.first.Height"/>
                 </md-tooltip>
               </md-card>
             </md-dialog-content>
@@ -124,6 +124,7 @@ export default {
       currentTool: null,
 
       // For paint tool
+      paintCursor: null,
       selectedTileGroup: { tiles: [] },
       selectedQuadBatch: {},
       showSelectBatch: false,
@@ -134,7 +135,6 @@ export default {
     }
   },
   beforeDestroy: function () {
-    this.$store.commit('World/SET_CURSOR', 0)
     this.selectNone()
   },
   computed: {
@@ -212,8 +212,10 @@ export default {
       this.autoSelectTileGroup()
     },
     selectedTileGroup (now, was) {
-      if (this.currentTool) {
-        this.$store.commit('World/SET_CURSOR', now.tiles[0])
+      this.$refs.world.destroyLevelTile(this.paintCursor)
+      if (this.currentTool === 'Paint') {
+        this.paintCursor = this.$refs.world.newLevelTile(this.selectedTileGroup.tiles[0])
+        this.paintCursor.alpha = 0
       }
     }
   },
@@ -255,10 +257,10 @@ export default {
     // autoSelectTileGroup picks a tile group from the available tile groups.
     autoSelectTileGroup () {
       this.selectedTileGroup = this.tileGroups[0]
+      this.$refs.world.destroyLevelTile(this.paintCursor)
       if (this.currentTool) {
-        this.$store.commit('World/SET_CURSOR', this.selectedTileGroup.tiles[0])
-      } else {
-        this.$store.commit('World/SET_CURSOR', 0)
+        this.paintCursor = this.$refs.world.newLevelTile(this.selectedTileGroup.tiles[0])
+        this.paintCursor.alpha = 0
       }
     },
 
@@ -266,25 +268,45 @@ export default {
       this.autoSelectQuadBatch()
       this.autoSelectTileGroup()
 
-      this.$store.commit('World/SET_CURSOR', this.selectedTileGroup.tiles[0])
+      this.paintCursor = this.$refs.world.newLevelTile(this.selectedTileGroup.tiles[0])
+      this.paintCursor.alpha = 0
 
       this.$store.commit('World/SET_TOOL', {
         name: 'Paint',
         down: () => {
-          this.$store.commit('World/GET_CURSOR', (cursor) => {
-            let q = {
-              Id: tmpId(),
-              QuadBatch_Id: this.selectedQuadBatch.Id,
-              WorldLocationX: cursor.x,
-              WorldLocationY: cursor.y,
-              Tile_Id: sample(this.selectedTileGroup.tiles)
-            }
-            console.log('TODO(griffithsh): commit new quad!', q)
-            this.$store.commit('LevelDetails/APPEND_QUAD', q)
-          })
+          let q = {
+            Id: tmpId(),
+            QuadBatch_Id: this.selectedQuadBatch.Id,
+            WorldLocationX: this.paintCursor.x,
+            WorldLocationY: this.paintCursor.y,
+            Tile_Id: sample(this.selectedTileGroup.tiles),
+            dirty: true
+          }
+          this.$store.commit('LevelDetails/APPEND_QUAD', q)
+        },
+        move: (e) => {
+          if (this.paintCursor) {
+            console.log('paint move')
+            let coords = this.$refs.world.clickToLevel(e)
+            this.paintCursor.x = Math.round(coords.x - (this.paintCursor.width / 2))
+            this.paintCursor.y = Math.round(coords.y - (this.paintCursor.height / 2))
+          }
+        },
+        out: () => {
+          if (this.paintCursor) {
+            this.paintCursor.alpha = 0
+          }
+        },
+        over: () => {
+          if (this.paintCursor) {
+            this.paintCursor.alpha = 0.75
+          }
         },
         cleanup: () => {
-          this.$store.commit('World/SET_CURSOR', 0)
+          if (this.paintCursor) {
+            this.$refs.world.destroyLevelTile(this.paintCursor)
+            this.paintCursor = null
+          }
         }
       })
     },

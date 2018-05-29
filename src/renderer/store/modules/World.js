@@ -17,10 +17,7 @@ const state = {
   // tool is a map of functions to handle mouse events. The keys up, down, move,
   // out, and over are accepted, as well as a special method called cleanup to
   // be called as the tool is deactivated.
-  tool: defaultTool,
-
-  cursorTileId: null, // should be a tileId.
-  cursorRequester: null // A function that is requesting the current cursor from whoever can provide it.
+  tool: defaultTool
 }
 
 const actions = { }
@@ -36,14 +33,6 @@ const mutations = {
   },
   UNSET_TOOL (state) {
     state.tool = defaultTool
-  },
-
-  // You can set a Tile as the cursor
-  SET_CURSOR (state, tileId) {
-    state.cursorTileId = tileId
-  },
-  GET_CURSOR (state, requester) {
-    state.cursorRequester = requester
   }
 }
 
