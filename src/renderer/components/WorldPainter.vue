@@ -286,7 +286,6 @@ export default {
         },
         move: (e) => {
           if (this.paintCursor) {
-            console.log('paint move')
             let coords = this.$refs.world.clickToLevel(e)
             this.paintCursor.x = Math.round(coords.x - (this.paintCursor.width / 2))
             this.paintCursor.y = Math.round(coords.y - (this.paintCursor.height / 2))

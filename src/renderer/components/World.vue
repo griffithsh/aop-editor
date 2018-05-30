@@ -1,5 +1,10 @@
 <template>
   <div id="world">
+    <keyboard-event :k="'+'" :press="this.zoomIn"/>
+    <keyboard-event :k="'-'" :press="this.zoomOut"/>
+    <keyboard-event :k="' '" :down="() => { this.panning = true }" :up="() => { this.panning = false }"/>
+    <keyboard-event :k="'j'" :press="this.descendLayer"/>
+    <keyboard-event :k="'k'" :press="this.ascendLayer"/>
     <md-toolbar class="md-primary">
       <h1 class="md-title"><md-tooltip>Level Id: {{ details.Id }}</md-tooltip>"{{ details.Description }}"</h1>
       <md-button class="md-icon" @click="back()">close</md-button>
@@ -24,31 +29,26 @@
       <canvas ref="canvas" :style="{cursor:panning?'pointer':'inherit'}"></canvas>
     </div>
     <footer>
-      TODO - Info! How wide is this level, where are we focusing? What mode are we in? <span>{{ x + '|' + y }}</span> zoom: {{ scale*100 }}%
+      TODO - Info! How wide is this level, where are we focusing? What mode are we in? <!--<span>{{ x + '|' + y }}</span>--> zoom: {{ scale*100 }}%
     </footer>
   </div>
 </template>
 
 <script>
 import * as PIXI from 'pixi.js'
+import KeyboardEvent from './KeyboardEvent'
 var app = null
 var registeredTileSprites = []
 
 export default {
   name: 'world',
-  components: { },
+  components: { KeyboardEvent },
   props: {
     LevelId: Number
   },
   data: () => {
     return {
       scale: 2,
-      x: 0,
-      y: 0,
-      mouseX: 0,
-      mouseY: 0,
-      alt: false,
-      meta: false,
       panning: false,
       spritesByQuad: {}
     }
@@ -61,8 +61,6 @@ export default {
     registeredTileSprites = []
 
     window.removeEventListener('resize', this.resize)
-    window.removeEventListener('keydown', this.globalKeydownHandler)
-    window.removeEventListener('keyup', this.globalKeyupHandler)
   },
   mounted: function () {
     // If db is null, kick out to '/'.
@@ -72,8 +70,6 @@ export default {
     }
     this.$nextTick(() => {
       window.addEventListener('resize', this.resize)
-      window.addEventListener('keydown', this.globalKeydownHandler)
-      window.addEventListener('keyup', this.globalKeyupHandler)
     })
     this.$store.dispatch('Textures/LOAD').then(() => {
       return new Promise((resolve, reject) => {
@@ -136,10 +132,6 @@ export default {
         }
       })
       app.stage.on('mousemove', (e) => {
-        // record where the mouse is ...
-        this.mouseX = e.data.originalEvent.offsetX
-        this.mouseY = e.data.originalEvent.offsetY
-
         // Panning is always checked
         if (this.panning) {
           this.handlePan(e.data.originalEvent)
@@ -170,9 +162,6 @@ export default {
       // focus on center of level
       app.stage.layerChild.x = (w / 2) - (this.$store.state.LevelDetails.details.Width / 2 * this.scale)
       app.stage.layerChild.y = (h / 2) - (this.$store.state.LevelDetails.details.Height / 2 * this.scale)
-      let f = this.getFocus()
-      this.x = f.x
-      this.y = f.y
     })
   },
   computed: {
@@ -304,8 +293,6 @@ export default {
         f.y = 0
       }
 
-      this.x = f.x
-      this.y = f.y
       this.focus(f)
     },
 
@@ -455,36 +442,6 @@ export default {
 
       for (let rs of registeredTileSprites) {
         app.stage.layerChild.addChild(rs)
-      }
-    },
-
-    globalKeydownHandler (e) {
-      if (e.key === 'Meta') {
-        this.meta = true
-      } else if (e.key === 'Alt') {
-        this.alt = true
-      } else if (e.key === '-') {
-        this.zoomOut()
-      } else if (e.key === '+') {
-        this.zoomIn()
-      } else if (e.key === ' ') {
-        // TODO set global grabber icon
-        this.panning = true
-      } else if (e.key === 'j') {
-        this.descendLayer()
-      } else if (e.key === 'k') {
-        this.ascendLayer()
-      }
-    },
-
-    globalKeyupHandler (e) {
-      if (e.key === 'Meta') {
-        this.meta = false
-      } else if (e.key === 'Alt') {
-        this.alt = false
-      } else if (e.key === ' ') {
-        // TODO unset global grabber icon
-        this.panning = false
       }
     },
 
