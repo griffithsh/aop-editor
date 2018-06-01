@@ -1,4 +1,5 @@
 <template>
+  <span class="keyboard-event"/>
 </template>
 
 <script>
@@ -55,5 +56,7 @@ export default {
 </script>
 
 <style>
-
+.keyboard-event {
+  display:none;
+}
 </style>

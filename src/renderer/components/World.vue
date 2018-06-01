@@ -457,7 +457,7 @@ export default {
     quadAt (x, y) {
       let found = []
       for (let b of this.$store.state.LevelDetails.batchesByLayer[this.$store.state.World.layerId]) {
-        for (let q of this.$store.state.LevelDetails.quadsByBatch[b.Id]) {
+        for (let q of this.$store.state.LevelDetails.quadsByBatch[b.Id] || []) {
           // every quad in this LevelLayer...
           if (x > q.WorldLocationX && y > q.WorldLocationY) {
             // get tile ...

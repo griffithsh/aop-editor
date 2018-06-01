@@ -9,6 +9,10 @@
         <md-tooltip>{{ tool.tooltip }}</md-tooltip>
         <md-icon>{{ tool.icon }}</md-icon>
       </md-button>
+      <keyboard-event :k="'s'" :down="this.save"/>
+      <keyboard-event :k="'Delete'" :down="this.deletePicked"/>
+      <keyboard-event :k="'Backspace'" :down="this.deletePicked"/>
+      <user-notifications></user-notifications>
       <hr>
       <div>
         <div v-if="currentTool === 'Paint'">
@@ -103,14 +107,16 @@
 import { without, sample } from 'lodash'
 import ImageSlice from './ImageSlice'
 import World from './World'
+import KeyboardEvent from './KeyboardEvent'
+import UserNotifications from './UserNotifications'
 
 function tmpId () {
-  return Math.random().toString(36).substring(2, 15)
+  return 'id' + Math.random().toString(36).substring(2, 15)
 }
 
 export default {
   name: 'world-painter',
-  components: { ImageSlice, World },
+  components: { ImageSlice, World, KeyboardEvent, UserNotifications },
   props: {
     LevelId: Number
   },
@@ -167,7 +173,7 @@ export default {
       let tilesByTileGroupId = {}
       for (let prop in this.$store.state.Tiles.tiles) {
         let tile = this.$store.state.Tiles.tiles[prop]
-        if (tile.Texture_Id === this.selectedQuadBatch.textureId) {
+        if (tile.Texture_Id === this.selectedQuadBatch.textureId || this.selectedQuadBatch.quads === 0) {
           if (tile.TileGroup_Id) {
             // This tile has a Tile Group.
             if (tilesByTileGroupId[tile.TileGroup_Id]) {
@@ -199,7 +205,6 @@ export default {
         let group = tilesByTileGroupId[prop]
         groups.push(group)
       }
-      console.log('tileGroups:', tilesByTileGroupId, groups, result)
       return groups.concat(result)
     }
   },
@@ -302,7 +307,7 @@ export default {
           }
         },
         cleanup: () => {
-          if (this.paintCursor) {
+          if (this.paintCursor && this.$refs.world) {
             this.$refs.world.destroyLevelTile(this.paintCursor)
             this.paintCursor = null
           }
@@ -312,7 +317,7 @@ export default {
 
     deletePicked () {
       if (this.pickedSprite) {
-        console.log('TODO(griffithsh): delete quad', this.pickedSprite.Quad_Id)
+        this.$store.commit('LevelDetails/DELETE_QUAD', this.pickedSprite.Quad_Id)
       }
     },
 
@@ -363,6 +368,17 @@ export default {
           }
         }
       })
+    },
+
+    save (e) {
+      if (e.metaKey) {
+        this.$store.dispatch('LevelDetails/SAVE').then(() => {
+          console.log('GETTING', this.$store.state.LevelDetails.deletedQuads)
+          return this.$store.dispatch('LevelDetails/GET', this.LevelId)
+        }).then(() => {
+          console.log('SAVED', this.$store.state.LevelDetails.deletedQuads)
+        })
+      }
     }
   }
 }

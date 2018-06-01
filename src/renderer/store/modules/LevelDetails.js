@@ -78,6 +78,7 @@ function model (rows) {
     layers: without(uniqBy(rows, 'LevelLayer_Id').map(modelLayer), null),
     quadBatches: without(uniqBy(rows, 'QuadBatch_Id').map(modelQuadBatch), null),
     quads: without(uniqBy(rows, 'Quad_Id').map(modelQuad), null),
+    deletedQuads: [],
     cicadas: without(uniqBy(rows, 'Cicada_Id').map(modelCicada), null),
     cicadaLayers: without(uniqBy(rows, 'CicadaLayer_Id').map(modelCicadaLayer), null),
     quadsByBatch: {},
@@ -100,6 +101,18 @@ function model (rows) {
   }
 
   return m
+}
+
+function isNew (id) {
+  return typeof id !== 'number'
+}
+
+function shouldUpdate (entity) {
+  return entity.dirty && !isNew(entity.Id)
+}
+
+function shouldInsert (entity) {
+  return isNew(entity.Id)
 }
 
 let getSql = `
@@ -139,6 +152,81 @@ const actions = {
         resolve()
       })
     })
+  },
+
+  // SAVE the current state of the loaded level to the database.
+  SAVE ({ commit, dispatch, state, rootState }) {
+    return new Promise((resolve, reject) => {
+      let promises = []
+      // let newBatches = {}
+
+      // Review every QuadBatch
+      // for (let batch of state.quadBatches) {
+      //   if (shouldUpdate(batch)) {
+      //     sql.push('UPDATE QuadBatches SET (ZIndex=?) WHERE Id = ?;')
+      //     params.push(batch.ZIndex, batch.Id)
+      //   } else if (shouldInsert(batch)) {
+      //     newBatches[batch.Id] = Object.assign({ quads:[] }, batch)
+      //   }
+      // }
+
+      // Review every quad for any that need to be updated or inserted.
+      for (let quad of state.quads) {
+        if (shouldUpdate(quad)) {
+          promises.push(new Promise((resolve, reject) => {
+            rootState.Database.connection.run('UPDATE Quads SET WorldLocationX=?,WorldLocationY=? WHERE Id = ?;', [quad.WorldLocationX, quad.WorldLocationY, quad.Id], (err) => {
+              if (err) {
+                let msg = 'Could not update quad ' + quad.Id + ': ' + err
+                return reject(msg)
+              }
+              resolve()
+            })
+          }))
+        } else if (shouldInsert(quad)) {
+          if (isNew(quad.QuadBatch_Id)) {
+            return console.error('FIXME(griffithsh): cant save quads for new batches yet')
+          } else {
+            promises.push(new Promise((resolve, reject) => {
+              rootState.Database.connection.run('INSERT INTO Quads (WorldLocationX,WorldLocationY,Tile_Id,QuadBatch_Id) VALUES (?,?,?,?);', [quad.WorldLocationX, quad.WorldLocationY, quad.Tile_Id, quad.QuadBatch_Id], (err) => {
+                if (err) {
+                  let msg = 'Could not insert new quad ' + quad.Id + ': ' + err
+                  return reject(msg)
+                }
+                resolve()
+              })
+            }))
+          }
+        }
+      }
+
+      // Review the deleted list for quads to delete.
+      for (let quad of state.deletedQuads) {
+        if (!isNew(quad.Id)) {
+          promises.push(new Promise((resolve, reject) => {
+            rootState.Database.connection.run('DELETE FROM Quads WHERE Id = ?;', [quad.Id], (err) => {
+              if (err) {
+                let msg = 'Could not delete quad ' + quad.Id + ': ' + err
+                return reject(msg)
+              }
+              resolve()
+            })
+          }))
+        }
+      }
+
+      // When all database operations have been composed into Promises, then
+      // they can be executed together to perform the SAVE.
+      if (promises.length) {
+        Promise.all(promises).then(() => {
+          dispatch('NOTIFY', { message: 'Saved successfully', duration: 5000 }, { root: true })
+          resolve()
+        }).catch((msg) => {
+          dispatch('ERROR', msg, { root: true })
+        })
+      } else {
+        console.log('nothing to save - should be no-op')
+      }
+    })
   }
 }
 
@@ -163,8 +251,31 @@ const mutations = {
           q.dirty = true
           console.log(`REPOSITION_QUAD: set Quad ${data.Id} to ${data.x}/${data.y}`)
         }
+        break
       }
     }
+  },
+
+  // DELETE_QUAD adds the quad to a deleted list ...
+  DELETE_QUAD (state, quadId) {
+    for (let i = 0; i < state.quads.length; i++) {
+      let q = state.quads[i]
+      if (q.Id === quadId) {
+        // Move this quad into a "deleted quads" list, to be dealt with and
+        // purged on LevelDetails/SAVE.
+        let deleted = state.quads.splice(i, 1)[0]
+        state.deletedQuads.push(deleted)
+        let qbb = state.quadsByBatch[q.QuadBatch_Id]
+        for (let j = 0; j < qbb.length; j++) {
+          if (qbb[j].Id === quadId) {
+            qbb.splice(j, 1)
+            break
+          }
+        }
+        break
+      }
+    }
+    console.log('LevelDetails/DELETE_QUAD: ', state.deletedQuads)
   }
 }
 
