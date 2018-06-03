@@ -288,6 +288,16 @@ export default {
             dirty: true
           }
           this.$store.commit('LevelDetails/APPEND_QUAD', q)
+          let qs = this.$store.state.LevelDetails.quadsByBatch[this.selectedQuadBatch.Id]
+          this.selectedQuadBatch.quads = qs.length
+          if (qs.length === 1) {
+            let tiles = this.$store.state.Tiles.tiles
+            let textureId = qs.length ? tiles[qs[0].Tile_Id].Texture_Id : null
+            let texture = this.$store.state.Textures.byId[textureId] || {}
+            this.selectedQuadBatch.texture = texture.filename
+            this.selectedQuadBatch.textureId = texture.id
+            this.selectedQuadBatch.img = texture.dataUri
+          }
         },
         move: (e) => {
           if (this.paintCursor) {
