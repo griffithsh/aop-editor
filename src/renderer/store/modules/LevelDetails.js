@@ -223,8 +223,6 @@ const actions = {
         }).catch((msg) => {
           dispatch('ERROR', msg, { root: true })
         })
-      } else {
-        console.log('nothing to save - should be no-op')
       }
     })
   }
@@ -249,7 +247,6 @@ const mutations = {
           q.WorldLocationX = data.x
           q.WorldLocationY = data.y
           q.dirty = true
-          console.log(`REPOSITION_QUAD: set Quad ${data.Id} to ${data.x}/${data.y}`)
         }
         break
       }
@@ -275,7 +272,6 @@ const mutations = {
         break
       }
     }
-    console.log('LevelDetails/DELETE_QUAD: ', state.deletedQuads)
   }
 }
 

@@ -375,8 +375,6 @@ export default {
         this.$store.dispatch('LevelDetails/SAVE').then(() => {
           console.log('GETTING', this.$store.state.LevelDetails.deletedQuads)
           return this.$store.dispatch('LevelDetails/GET', this.LevelId)
-        }).then(() => {
-          console.log('SAVED', this.$store.state.LevelDetails.deletedQuads)
         })
       }
     }

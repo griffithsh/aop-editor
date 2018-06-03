@@ -180,7 +180,6 @@ export default {
   },
   watch: {
     quads (now, was) {
-      console.log(`watch.quads: was ${was.length}, now ${now.length}`)
       this.redraw()
     },
     tool (now, was) {
@@ -365,9 +364,7 @@ export default {
         for (let batch of this.$store.state.LevelDetails.batchesByLayer[layer.Id] || []) {
           let batchContainer = new PIXI.Container()
           let lowest = 0
-          if (batch.Id === 1) {
-            console.log('quad batch 1 found', layer)
-          }
+
           for (let quad of this.$store.state.LevelDetails.quadsByBatch[batch.Id] || []) {
             let tile = this.$store.state.Tiles.tiles[quad.Tile_Id]
             let texture = PIXI.loader.resources[String(tile.Texture_Id)].texture
@@ -498,7 +495,6 @@ export default {
     // zoom and pan of the World, so that the Sprite's x and y can be assigned
     // with LevelLayer-relative coordinates.
     newLevelTile (tileId) {
-      console.log('World::newLevelTile:', tileId)
       let tile = this.$store.state.Tiles.tiles[tileId]
       if (!tile) {
         return null
