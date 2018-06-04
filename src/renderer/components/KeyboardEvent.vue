@@ -39,16 +39,19 @@ export default {
     globalDownHandler (e) {
       if (e.key === this.k) {
         this.down(e)
+        e.preventDefault()
       }
     },
     globalUpHandler (e) {
       if (e.key === this.k) {
         this.up(e)
+        e.preventDefault()
       }
     },
     globalPressHandler (e) {
       if (e.key === this.k) {
         this.press(e)
+        e.preventDefault()
       }
     }
   }

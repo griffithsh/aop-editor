@@ -176,6 +176,9 @@ export default {
     },
     tool () {
       return this.$store.state.World.tool
+    },
+    highlight () {
+      return this.$store.state.World.highlight
     }
   },
   watch: {
@@ -186,6 +189,9 @@ export default {
       if (was.cleanup) {
         was.cleanup()
       }
+    },
+    highlight (now, was) {
+      this.redraw()
     }
   },
   methods: {
@@ -357,10 +363,13 @@ export default {
       }
       this.spritesByQuad = {}
 
+      let h = this.$store.state.World.highlight || {}
+
+      // Add every LevelLayer
       for (let layer of this.$store.state.LevelDetails.layers) {
         let container = new PIXI.Container()
 
-        // QuadBatches
+        // Add QuadBatches
         for (let batch of this.$store.state.LevelDetails.batchesByLayer[layer.Id] || []) {
           let batchContainer = new PIXI.Container()
           let lowest = 0
@@ -373,6 +382,7 @@ export default {
             let sprite = new PIXI.Sprite(new PIXI.Texture(texture, frame))
             sprite.x = quad.WorldLocationX
             sprite.y = quad.WorldLocationY
+
             lowest = lowest >= sprite.y + tile.Height ? lowest : sprite.y + tile.Height
 
             batchContainer.addChild(sprite)
@@ -383,10 +393,17 @@ export default {
             z: batch.ZIndex,
             y: lowest
           }
+          if ((!h.batchId && !h.cicadaId) || batch.Id === h.batchId) {
+            batchContainer.filters = []
+          } else {
+            let colorMatrix = new PIXI.filters.ColorMatrixFilter()
+            batchContainer.filters = [colorMatrix]
+            colorMatrix.brightness(0.5)
+          }
           container.addChild(batchContainer)
         }
 
-        // Cicadas
+        // Add Cicadas
         for (let c of this.$store.state.LevelDetails.cicadasByLayer[layer.Id] || []) {
           let cicadaContainer = new PIXI.Container()
 
@@ -408,10 +425,18 @@ export default {
             z: c.ZIndex,
             y: lowest
           }
+
+          if ((!h.batchId && !h.cicadaId) || c.Id === h.cicadaId) {
+            cicadaContainer.filters = []
+          } else {
+            let colorMatrix = new PIXI.filters.ColorMatrixFilter()
+            cicadaContainer.filters = [colorMatrix]
+            colorMatrix.brightness(0.5)
+          }
           container.addChild(cicadaContainer)
         }
 
-        // Sort the components of this container
+        // Sort the Batches and Cicadas in the container for this LevelLayer.
         container.children.sort((a, b) => {
           if (a.aop.z !== b.aop.z) {
             return a.aop.z - b.aop.z
@@ -419,7 +444,7 @@ export default {
           return a.aop.y - b.aop.y
         })
 
-        // Layer border and non-current layer effects
+        // Add Layer border and non-current layer effects
         let rectangle = new PIXI.Graphics()
         rectangle.lineStyle(1, 0x0, 0.7)
 
@@ -520,6 +545,18 @@ export default {
         if (registeredTileSprites[i] === ts) {
           registeredTileSprites = registeredTileSprites.splice(i, 1)
         }
+      }
+    },
+
+    // highlightQuadBatch shows a visual effect on the quadBatch specified by
+    // id. The effect persists until it is removed with removeHighlight.
+    highlightQuadBatch (id) {
+      this.$store.commit('World/SET_HIGHLIGHT_BATCH', id)
+    },
+
+    removeHighlight () {
+      if (this.$store.state.World.highlight.batchId || this.$store.state.World.highlight.cicadaId) {
+        this.$store.commit('World/UNSET_HIGHLIGHT')
       }
     }
   }

@@ -13,6 +13,7 @@ const defaultTool = {
 }
 const state = {
   layerId: null,
+  highlight: {},
 
   // tool is a map of functions to handle mouse events. The keys up, down, move,
   // out, and over are accepted, as well as a special method called cleanup to
@@ -33,6 +34,12 @@ const mutations = {
   },
   UNSET_TOOL (state) {
     state.tool = defaultTool
+  },
+  SET_HIGHLIGHT_BATCH (state, id) {
+    state.highlight = { batchId: id }
+  },
+  UNSET_HIGHLIGHT (state) {
+    state.highlight = { }
   }
 }
 

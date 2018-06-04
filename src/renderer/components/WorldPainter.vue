@@ -16,8 +16,13 @@
       <hr>
       <div>
         <div v-if="currentTool === 'Paint'">
-          <span class="md-title" style="padding:8px">QuadBatch</span>
-          <md-card class="select-quad-batch">
+          <span class="md-headline" style="padding:8px">
+            QuadBatch
+            <md-button class="md-icon-button">
+              <md-icon>add</md-icon>
+            </md-button>
+          </span>
+          <md-card v-if="selectedQuadBatch" class="select-quad-batch">
             <md-button @click="showSelectBatch = true" class="md-icon-button" style="float:right">
               <md-icon>edit</md-icon>
             </md-button>
@@ -26,7 +31,7 @@
             <br>
             <span class="md-caption">{{ selectedQuadBatch.quads }} quads at elevation {{ selectedQuadBatch.ZIndex }}</span>
           </md-card>
-          <md-dialog :md-active.sync="showSelectBatch">
+          <md-dialog v-if="selectedQuadBatch" :md-active.sync="showSelectBatch">
             <md-dialog-title>Select QuadBatch</md-dialog-title>
             <md-dialog-content style="width:500px;padding:8px;">
               <md-card v-for="batch in quadBatches" :key="batch.Id" class="select-quad-batch" style="width:48%;display:inline-block">
@@ -51,7 +56,7 @@
           </md-dialog>
           <br>
           <span class="md-title" style="padding:8px">Tile</span>
-          <md-card class="select-tile-group">
+          <md-card v-if="selectedTileGroup" class="select-tile-group">
             <md-button @click="showSelectGroup = true" class="md-icon-button" style="float:right">
               <md-icon>edit</md-icon>
             </md-button>
@@ -59,12 +64,13 @@
             <br>
             <span class="md-caption">{{ selectedTileGroup.tiles.length }} tile(s)</span>
           </md-card>
-          <image-slice :url="selectedTileGroup.texture.dataUri"
+          <image-slice v-if="selectedTileGroup"
+                       :url="selectedTileGroup.texture.dataUri"
                        :x="selectedTileGroup.first.TextureX"
                        :y="selectedTileGroup.first.TextureY"
                        :width="selectedTileGroup.first.Width"
                        :height="selectedTileGroup.first.Height"/>
-          <md-dialog :md-active.sync="showSelectGroup">
+          <md-dialog v-if="selectedTileGroup" :md-active.sync="showSelectGroup">
             <md-dialog-title>Select Tile Group</md-dialog-title>
             <md-dialog-content>
               <md-card v-for="group in tileGroups" :key="group.description" class="select-tile-group" style="width:48%;display:inline-block">
@@ -169,6 +175,9 @@ export default {
     // quadbatch, grouped. If Tiles in the database do not have a TileGroup,
     // then they form their own group, with only the one tile.
     tileGroups () {
+      if (!this.selectedQuadBatch) {
+        return []
+      }
       let result = []
       let tilesByTileGroupId = {}
       for (let prop in this.$store.state.Tiles.tiles) {
@@ -213,12 +222,15 @@ export default {
       this.autoSelectQuadBatch()
       this.autoSelectTileGroup()
     },
-    selectedQuadBatch (now, was) {
+    selectedQuadBatch (now) {
       this.autoSelectTileGroup()
+      if (this.currentTool === 'Paint' && now) {
+        this.$refs.world.highlightQuadBatch(now.Id)
+      }
     },
-    selectedTileGroup (now, was) {
+    selectedTileGroup (now) {
       this.$refs.world.destroyLevelTile(this.paintCursor)
-      if (this.currentTool === 'Paint') {
+      if (this.currentTool === 'Paint' && this.selectedTileGroup.tiles) {
         this.paintCursor = this.$refs.world.newLevelTile(this.selectedTileGroup.tiles[0])
         this.paintCursor.alpha = 0
       }
@@ -235,13 +247,10 @@ export default {
     },
 
     selectNone () {
-      this.mousedownHandler = null
-      this.mouseupHandler = null
-      this.mousemoveHandler = null
-      this.mouseoutHandler = null
-      this.mouseoverHandler = null
+      if (this.$store.state.World.tool.cleanup) {
+        this.$store.state.World.tool.cleanup()
+      }
 
-      this.toolCleanup = null
       this.$store.commit('World/UNSET_TOOL')
     },
 
@@ -263,7 +272,7 @@ export default {
     autoSelectTileGroup () {
       this.selectedTileGroup = this.tileGroups[0]
       this.$refs.world.destroyLevelTile(this.paintCursor)
-      if (this.currentTool) {
+      if (this.currentTool && this.selectedTileGroup) {
         this.paintCursor = this.$refs.world.newLevelTile(this.selectedTileGroup.tiles[0])
         this.paintCursor.alpha = 0
       }
@@ -273,9 +282,14 @@ export default {
       this.autoSelectQuadBatch()
       this.autoSelectTileGroup()
 
-      this.paintCursor = this.$refs.world.newLevelTile(this.selectedTileGroup.tiles[0])
-      this.paintCursor.alpha = 0
+      if (this.selectedTileGroup) {
+        this.paintCursor = this.$refs.world.newLevelTile(this.selectedTileGroup.tiles[0])
+        this.paintCursor.alpha = 0
+      }
 
+      if (this.selectedQuadBatch) {
+        this.$refs.world.highlightQuadBatch(this.selectedQuadBatch.Id)
+      }
       this.$store.commit('World/SET_TOOL', {
         name: 'Paint',
         down: () => {
@@ -317,10 +331,13 @@ export default {
           }
         },
         cleanup: () => {
-          if (this.paintCursor && this.$refs.world) {
-            this.$refs.world.destroyLevelTile(this.paintCursor)
-            this.paintCursor = null
+          if (this.$refs.world) {
+            this.$refs.world.removeHighlight()
+            if (this.paintCursor) {
+              this.$refs.world.destroyLevelTile(this.paintCursor)
+            }
           }
+          this.paintCursor = null
         }
       })
     },
@@ -383,7 +400,6 @@ export default {
     save (e) {
       if (e.metaKey) {
         this.$store.dispatch('LevelDetails/SAVE').then(() => {
-          console.log('GETTING', this.$store.state.LevelDetails.deletedQuads)
           return this.$store.dispatch('LevelDetails/GET', this.LevelId)
         })
       }
