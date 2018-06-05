@@ -338,6 +338,9 @@ export default {
             }
           }
           this.paintCursor = null
+        },
+        status: () => {
+          return `${this.paintCursor.x}x ${this.paintCursor.y}y`
         }
       })
     },

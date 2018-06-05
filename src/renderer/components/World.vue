@@ -28,9 +28,7 @@
       </aside>
       <canvas ref="canvas" :style="{cursor:panning?'pointer':'inherit'}"></canvas>
     </div>
-    <footer>
-      TODO - Info! How wide is this level, where are we focusing? What mode are we in? <!--<span>{{ x + '|' + y }}</span>--> zoom: {{ scale*100 }}%
-    </footer>
+    <footer>{{ status }}</footer>
   </div>
 </template>
 
@@ -165,6 +163,11 @@ export default {
     })
   },
   computed: {
+    status () {
+      return this.$store.state.World.tool && this.$store.state.World.tool.status
+        ? this.$store.state.World.tool.status()
+        : this.defaultStatus()
+    },
     details () {
       return this.$store.state.LevelDetails.details
     },
@@ -197,6 +200,17 @@ export default {
   methods: {
     back () {
       this.$router.push('/level-list')
+    },
+
+    defaultStatus () {
+      return [
+        `Level: ${this.LevelId}`,
+        `Layer: ${this.$store.state.World.layerId}`,
+        // `Layer Index: ${0}`,
+        `Width: ${this.$store.state.LevelDetails.details.Width}`,
+        `Height: ${this.$store.state.LevelDetails.details.Height}`,
+        `Scale: ${this.scale * 100}%`
+      ].join(', ')
     },
 
     ascendLayer () {

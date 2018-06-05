@@ -9,7 +9,10 @@ const defaultTool = {
   out: null,
   over: null,
 
-  cleanup: null
+  cleanup: null,
+
+  // status can be set to a function that provides a string for the footer.
+  status: null
 }
 const state = {
   layerId: null,
