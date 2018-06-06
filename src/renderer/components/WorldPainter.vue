@@ -18,9 +18,20 @@
         <div v-if="currentTool === 'Paint'">
           <span class="md-headline" style="padding:8px">
             QuadBatch
-            <md-button class="md-icon-button">
+            <md-button @click="showAddBatch = true" class="md-icon-button">
               <md-icon>add</md-icon>
             </md-button>
+            <md-dialog :md-active.sync="showAddBatch">
+              <md-dialog-title>Add QuadBatch</md-dialog-title>
+              <md-dialog-content>
+                <label>Z Index</label>
+                <input v-model="newBatchZ" placeholder="500">
+              </md-dialog-content>
+              <md-dialog-actions>
+                <md-button @click="showAddBatch = false">Cancel</md-button>
+                <md-button @click="addQuadBatch()" class="md-primary">Add</md-button>
+              </md-dialog-actions>
+            </md-dialog>
           </span>
           <md-card v-if="selectedQuadBatch" class="select-quad-batch">
             <md-button @click="showSelectBatch = true" class="md-icon-button" style="float:right">
@@ -46,10 +57,7 @@
               </md-card>
             </md-dialog-content>
             <md-dialog-actions>
-              <md-button>
-                New
-              </md-button>
-              <md-button class="md-primary" @click="showSelectBatch = false">
+              <md-button @click="showSelectBatch = false">
                 Cancel
               </md-button>
             </md-dialog-actions>
@@ -139,6 +147,8 @@ export default {
       paintCursor: null,
       selectedTileGroup: { tiles: [] },
       selectedQuadBatch: {},
+      showAddBatch: false,
+      newBatchZ: null,
       showSelectBatch: false,
       showSelectGroup: false,
 
@@ -150,6 +160,9 @@ export default {
     this.selectNone()
   },
   computed: {
+    textures () {
+      return this.$store.state.Textures.list
+    },
     layerId () {
       return this.$store.state.World.layerId
     },
@@ -254,6 +267,25 @@ export default {
       this.$store.commit('World/UNSET_TOOL')
     },
 
+    addQuadBatch () {
+      let id = tmpId()
+      this.$store.commit('LevelDetails/ADD_BATCH', {
+        Id: id,
+        LevelLayer_Id: this.$store.state.World.layerId,
+        ZIndex: this.newBatchZ
+      })
+
+      for (let batch of this.quadBatches) {
+        if (batch.Id === id) {
+          this.selectQuadBatch(batch)
+          break
+        }
+      }
+
+      // Close dialog and cleanup.
+      this.showAddBatch = false
+      this.newBatchZ = null
+    },
     selectQuadBatch (batch) {
       this.showSelectBatch = false
       this.selectedQuadBatch = batch

@@ -234,10 +234,12 @@ const mutations = {
       state[p] = model[p]
     }
   },
+
   APPEND_QUAD (state, quad) {
     state.quads.push(quad)
     state.quadsByBatch[quad.QuadBatch_Id] ? state.quadsByBatch[quad.QuadBatch_Id].push(quad) : state.quadsByBatch[quad.QuadBatch_Id] = [quad]
   },
+
   REPOSITION_QUAD (state, data) {
     for (let q of state.quads) {
       if (q.Id === data.Id) {
@@ -271,6 +273,15 @@ const mutations = {
         }
         break
       }
+    }
+  },
+
+  ADD_BATCH (state, batch) {
+    state.quadBatches.push(batch)
+    if (state.batchesByLayer[batch.LevelLayer_Id]) {
+      state.batchesByLayer[batch.LevelLayer_Id].push(batch)
+    } else {
+      state.batchesByLayer[batch.LevelLayer_Id] = [batch]
     }
   }
 }
