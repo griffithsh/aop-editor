@@ -157,73 +157,84 @@ const actions = {
   // SAVE the current state of the loaded level to the database.
   SAVE ({ commit, dispatch, state, rootState }) {
     return new Promise((resolve, reject) => {
-      let promises = []
-      // let newBatches = {}
+      let newBatchIds = {} // should become { 'sdjufsdsd': 123, 'Sif48dgc': 456 }
 
-      // Review every QuadBatch
-      // for (let batch of state.quadBatches) {
-      //   if (shouldUpdate(batch)) {
-      //     sql.push('UPDATE QuadBatches SET (ZIndex=?) WHERE Id = ?;')
-      //     params.push(batch.ZIndex, batch.Id)
-      //   } else if (shouldInsert(batch)) {
-      //     newBatches[batch.Id] = Object.assign({ quads:[] }, batch)
-      //   }
-      // }
-
-      // Review every quad for any that need to be updated or inserted.
-      for (let quad of state.quads) {
-        if (shouldUpdate(quad)) {
-          promises.push(new Promise((resolve, reject) => {
-            rootState.Database.connection.run('UPDATE Quads SET WorldLocationX=?,WorldLocationY=? WHERE Id = ?;', [quad.WorldLocationX, quad.WorldLocationY, quad.Id], (err) => {
-              if (err) {
-                let msg = 'Could not update quad ' + quad.Id + ': ' + err
-                return reject(msg)
-              }
-              resolve()
-            })
-          }))
-        } else if (shouldInsert(quad)) {
-          if (isNew(quad.QuadBatch_Id)) {
-            return console.error('FIXME(griffithsh): cant save quads for new batches yet')
-          } else {
-            promises.push(new Promise((resolve, reject) => {
-              rootState.Database.connection.run('INSERT INTO Quads (WorldLocationX,WorldLocationY,Tile_Id,QuadBatch_Id) VALUES (?,?,?,?);', [quad.WorldLocationX, quad.WorldLocationY, quad.Tile_Id, quad.QuadBatch_Id], (err) => {
+      return Promise.resolve().then(() => {
+        return Promise.all(state.quadBatches.map((batch) => {
+          return new Promise((resolve, reject) => {
+            if (shouldUpdate(batch)) {
+              rootState.Database.connection.run('UPDATE QuadBatches SET ZIndex=? WHERE Id = ?;', [batch.ZIndex, batch.Id], (err) => {
                 if (err) {
-                  let msg = 'Could not insert new quad ' + quad.Id + ': ' + err
+                  let msg = 'Could not update batch ' + batch.Id + ': ' + err
                   return reject(msg)
                 }
-                resolve()
+                return resolve()
               })
-            }))
-          }
-        }
-      }
-
-      // Review the deleted list for quads to delete.
-      for (let quad of state.deletedQuads) {
-        if (!isNew(quad.Id)) {
-          promises.push(new Promise((resolve, reject) => {
+            } else if (shouldInsert(batch)) {
+              rootState.Database.connection.run('INSERT INTO QuadBatches (LevelLayer_Id,ZIndex) VALUES (?,?);', [batch.LevelLayer_Id, batch.ZIndex], function (err) {
+                if (err) {
+                  let msg = 'Could not insert batch ' + batch.Id + ': ' + err
+                  return reject(msg)
+                }
+                newBatchIds[batch.Id] = this.lastID
+                return resolve()
+              })
+            } else {
+              resolve()
+            }
+          })
+        }))
+      }).then(() => {
+        return Promise.all(state.quads.map((quad) => {
+          return new Promise((resolve, reject) => {
+            if (shouldUpdate(quad)) {
+              rootState.Database.connection.run('UPDATE Quads SET WorldLocationX=?,WorldLocationY=? WHERE Id = ?;', [quad.WorldLocationX, quad.WorldLocationY, quad.Id], (err) => {
+                if (err) {
+                  let msg = 'Could not update quad ' + quad.Id + ': ' + err
+                  return reject(msg)
+                }
+                return resolve()
+              })
+            } else if (shouldInsert(quad)) {
+              if (isNew(quad.QuadBatch_Id)) {
+                // console.log('FIXME(griffithsh): cant save quads for new batches yet', newBatchIds, quad.QuadBatch_Id)
+                // return resolve()
+                rootState.Database.connection.run('INSERT INTO Quads (WorldLocationX,WorldLocationY,Tile_Id,QuadBatch_Id) VALUES (?,?,?,?);', [quad.WorldLocationX, quad.WorldLocationY, quad.Tile_Id, newBatchIds[quad.QuadBatch_Id]], (err) => {
+                  if (err) {
+                    let msg = 'Could not insert new quad ' + quad.Id + ': ' + err
+                    return reject(msg)
+                  }
+                  return resolve()
+                })
+              } else {
+                rootState.Database.connection.run('INSERT INTO Quads (WorldLocationX,WorldLocationY,Tile_Id,QuadBatch_Id) VALUES (?,?,?,?);', [quad.WorldLocationX, quad.WorldLocationY, quad.Tile_Id, quad.QuadBatch_Id], (err) => {
+                  if (err) {
+                    let msg = 'Could not insert new quad ' + quad.Id + ': ' + err
+                    return reject(msg)
+                  }
+                  return resolve()
+                })
+              }
+            } else {
+              resolve()
+            }
+          })
+        }))
+      }).then(() => {
+        return Promise.all(state.deletedQuads.map((quad) => {
+          if (!isNew(quad.Id)) {
             rootState.Database.connection.run('DELETE FROM Quads WHERE Id = ?;', [quad.Id], (err) => {
               if (err) {
                 let msg = 'Could not delete quad ' + quad.Id + ': ' + err
                 return reject(msg)
               }
-              resolve()
+              return resolve()
             })
-          }))
-        }
-      }
-
-      // When all database operations have been composed into Promises, then
-      // they can be executed together to perform the SAVE.
-      if (promises.length) {
-        Promise.all(promises).then(() => {
-          dispatch('NOTIFY', { message: 'Saved successfully', duration: 5000 }, { root: true })
-          resolve()
-        }).catch((msg) => {
-          dispatch('ERROR', msg, { root: true })
-        })
-      }
+          } else {
+            resolve()
+          }
+        }))
+      })
     })
   }
 }
