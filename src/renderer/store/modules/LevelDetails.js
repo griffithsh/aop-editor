@@ -11,7 +11,8 @@ function modelQuad (row) {
     QuadBatch_Id: row.QuadBatch_Id,
     WorldLocationX: row.WorldLocationX,
     WorldLocationY: row.WorldLocationY,
-    Tile_Id: row.Tile_Id
+    Tile_Id: row.Tile_Id,
+    QuadBottom: row.QuadBottom
   }
 }
 
@@ -22,7 +23,9 @@ function modelQuadBatch (row) {
   return {
     Id: row.QuadBatch_Id,
     LevelLayer_Id: row.LevelLayer_Id,
-    ZIndex: row.BatchZIndex
+    ZIndex: row.BatchZIndex,
+    Top: Number.MAX_SAFE_INTEGER,
+    Bottom: Number.MIN_SAFE_INTEGER
   }
 }
 
@@ -82,17 +85,28 @@ function model (rows) {
     cicadas: without(uniqBy(rows, 'Cicada_Id').map(modelCicada), null),
     cicadaLayers: without(uniqBy(rows, 'CicadaLayer_Id').map(modelCicadaLayer), null),
     quadsByBatch: {},
+    batchesById: {},
     batchesByLayer: {},
     cicadasByLayer: {},
     cicadaLayersByCicada: {}
   }
 
-  for (let q of m.quads) {
-    m.quadsByBatch[q.QuadBatch_Id] ? m.quadsByBatch[q.QuadBatch_Id].push(q) : m.quadsByBatch[q.QuadBatch_Id] = [q]
-  }
   for (let b of m.quadBatches) {
     m.batchesByLayer[b.LevelLayer_Id] ? m.batchesByLayer[b.LevelLayer_Id].push(b) : m.batchesByLayer[b.LevelLayer_Id] = [b]
+
+    m.batchesById[b.Id] = b
   }
+  for (let q of m.quads) {
+    m.quadsByBatch[q.QuadBatch_Id] ? m.quadsByBatch[q.QuadBatch_Id].push(q) : m.quadsByBatch[q.QuadBatch_Id] = [q]
+
+    if (q.WorldLocationY < m.batchesById[q.QuadBatch_Id].Top) {
+      m.batchesById[q.QuadBatch_Id].Top = q.WorldLocationY
+    }
+    if (q.QuadBottom > m.batchesById[q.QuadBatch_Id].Bottom) {
+      m.batchesById[q.QuadBatch_Id].Bottom = q.QuadBottom
+    }
+  }
+
   for (let cl of m.cicadaLayers) {
     m.cicadaLayersByCicada[cl.Cicada_Id] ? m.cicadaLayersByCicada[cl.Cicada_Id].push(cl) : m.cicadaLayersByCicada[cl.Cicada_Id] = [cl]
   }
@@ -121,6 +135,7 @@ SELECT
   LAY.Id as LevelLayer_Id, LAY."Index" as LayerIndex, LAY.Width as LayerWidth, LAY.Height as LayerHeight,
   QB.Id as QuadBatch_Id, QB.ZIndex as BatchZIndex,
   Q.Id as Quad_Id, WorldLocationX, WorldLocationY, Tile_Id,
+  T.Height+Q.WorldLocationY as QuadBottom,
   C.Id as Cicada_Id, C.Width as CicadaWidth, C.Height as CicadaHeight, C.X, C.Y, C.ZIndex as CicadaZIndex,
   CL.Id as CicadaLayer_Id, CL."Index" as CicadaLayerIndex, CL.Texture_Id
 
@@ -130,6 +145,7 @@ FROM
   LEFT JOIN LevelLayers LAY on LV.Id = LAY.Level_Id
     LEFT JOIN QuadBatches QB on LAY.Id = QB.LevelLayer_Id
       LEFT JOIN Quads Q on QB.Id = Q.QuadBatch_Id
+        LEFT JOIN Tiles T on Q.Tile_Id = T.Id
     LEFT JOIN Cicadas C ON LAY.Id = C.LevelLayer_Id
       LEFT JOIN CicadaLayers CL on C.Id = CL.Cicada_Id
 WHERE

@@ -40,17 +40,24 @@
             <span class="md-subheading">{{ selectedQuadBatch.texture }}</span>
             <span class="md-caption">[{{ selectedQuadBatch.Id }}]</span>
             <br>
-            <span class="md-caption">{{ selectedQuadBatch.quads }} quads at elevation {{ selectedQuadBatch.ZIndex }}</span>
+            <span class="md-caption">
+              {{ selectedQuadBatch.quads }} quads at elevation {{ selectedQuadBatch.ZIndex }}<br>
+              <span v-if="selectedQuadBatch.quads">From {{ selectedQuadBatch.top }} to {{ selectedQuadBatch.bottom }}</span>
+            </span>
           </md-card>
           <md-dialog v-if="selectedQuadBatch" :md-active.sync="showSelectBatch">
             <md-dialog-title>Select QuadBatch</md-dialog-title>
             <md-dialog-content style="width:500px;padding:8px;">
               <md-card v-for="batch in quadBatches" :key="batch.Id" class="select-quad-batch" style="width:48%;display:inline-block">
-                <span class="md-subheading">{{ batch.texture }}</span> <span class="md-caption">[{{ batch.Id }}]</span><br><span class="md-caption">{{ batch.quads }} quads at elevation {{ batch.ZIndex }}</span>
-                <md-button class="md-icon-button md-primary" @click="selectQuadBatch(batch)">
+                <span class="md-subheading">{{ batch.texture }}</span> <span class="md-caption">[{{ batch.Id }}]</span><br>
+                <md-button @click="selectQuadBatch(batch)" class="md-icon-button md-primary" style="float:right">
                   <md-icon v-if="batch.Id == selectedQuadBatch.Id">check_box</md-icon>
                   <md-icon v-else>check_box_outline_blank</md-icon>
                 </md-button>
+                <span class="md-caption">
+                  {{ batch.quads }} quads at elevation {{ batch.ZIndex }}<br>
+                  <span v-if="batch.quads">From {{ batch.top }} to {{ batch.bottom }}</span>
+                </span>
                 <md-tooltip>
                   <img :src="batch.img" width="256px" style="background-color:#000"/>
                 </md-tooltip>
@@ -179,7 +186,9 @@ export default {
           quads: qs.length,
           texture: texture.filename,
           textureId: texture.id,
-          img: texture.dataUri
+          img: texture.dataUri,
+          top: b.Top,
+          bottom: b.Bottom
         })
       }), null)
     },
