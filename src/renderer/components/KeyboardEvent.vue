@@ -9,7 +9,8 @@ export default {
     k: String,
     up: Function,
     down: Function,
-    press: Function
+    press: Function,
+    swallow: Boolean
   },
   mounted: function () {
     this.$nextTick(() => {
@@ -39,19 +40,19 @@ export default {
     globalDownHandler (e) {
       if (e.key === this.k) {
         this.down(e)
-        e.preventDefault()
+        this.swallow && e.preventDefault()
       }
     },
     globalUpHandler (e) {
       if (e.key === this.k) {
         this.up(e)
-        e.preventDefault()
+        this.swallow && e.preventDefault()
       }
     },
     globalPressHandler (e) {
       if (e.key === this.k) {
         this.press(e)
-        e.preventDefault()
+        this.swallow && e.preventDefault()
       }
     }
   }

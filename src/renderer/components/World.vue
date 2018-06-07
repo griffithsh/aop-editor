@@ -2,7 +2,7 @@
   <div id="world">
     <keyboard-event :k="'+'" :press="this.zoomIn"/>
     <keyboard-event :k="'-'" :press="this.zoomOut"/>
-    <keyboard-event :k="' '" :down="() => { this.panning = true }" :up="() => { this.panning = false }"/>
+    <keyboard-event :k="' '" :down="() => { this.panning = true }" :up="() => { this.panning = false }" :swallow="true" />
     <keyboard-event :k="'j'" :press="this.descendLayer"/>
     <keyboard-event :k="'k'" :press="this.ascendLayer"/>
     <md-toolbar class="md-primary">
