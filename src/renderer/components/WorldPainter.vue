@@ -70,7 +70,7 @@
             </md-button>
             <span class="md-subheading">{{ selectedTileGroup.description }}</span>
             <br>
-            <span class="md-caption">{{ selectedTileGroup.tiles.length }} tile(s)</span>
+            <span class="md-caption">{{ selectedTileGroup.tiles.length }} tile(s), {{ selectedTileGroup.width }}w, {{ selectedTileGroup.height }}h</span>
           </md-card>
           <image-slice v-if="selectedTileGroup"
                        :url="selectedTileGroup.texture.dataUri"
@@ -84,7 +84,7 @@
               <md-card v-for="group in tileGroups" :key="group.description" class="select-tile-group" style="width:48%;display:inline-block">
                 <span class="md-subheading">{{ group.description }}</span>
                 <br>
-                <span class="md-caption">{{ group.tiles.length }} tile(s)</span>
+                <span class="md-caption">{{ group.tiles.length }} tile(s), {{ selectedTileGroup.width }}w, {{ selectedTileGroup.height }}h</span>
                 <md-button class="md-icon-button md-primary" @click="selectTileGroup(group)">
                   <md-icon v-if="group.description == selectedTileGroup.description">check_box</md-icon>
                   <md-icon v-else>check_box_outline_blank</md-icon>
@@ -201,12 +201,18 @@ export default {
             if (tilesByTileGroupId[tile.TileGroup_Id]) {
               // This tilegroup has already been created.
               tilesByTileGroupId[tile.TileGroup_Id].tiles.push(tile.Id)
+              if (tilesByTileGroupId[tile.TileGroup_Id].Width !== tile.Width || tilesByTileGroupId[tile.TileGroup_Id].Height !== tile.Height) {
+                tilesByTileGroupId[tile.TileGroup_Id].Width = 'varies'
+                tilesByTileGroupId[tile.TileGroup_Id].Height = 'varies'
+              }
             } else {
               // This Tile group needs to be initialised.
               tilesByTileGroupId[tile.TileGroup_Id] = {
                 texture: this.$store.state.Textures.byId[tile.Texture_Id],
                 // FIXME(hgriffiths): description should be the description field in the DB.
-                description: 'TileGroup: ' + tile.TileGroup_Id,
+                description: `Group[${tile.TileGroup_Id}]: ${tile.Group_Description} (from ${this.$store.state.Textures.byId[tile.Texture_Id].filename})`,
+                width: tile.Width,
+                height: tile.Height,
                 tiles: [tile.Id],
                 first: tile
               }
@@ -215,7 +221,9 @@ export default {
             // This tile is un-grouped.
             result.push({
               texture: this.$store.state.Textures.byId[tile.Texture_Id],
-              description: 'ungrouped Tile: ' + tile.Id,
+              description: `Tile[${tile.Id}]: ${this.$store.state.Textures.byId[tile.Texture_Id].filename}`,
+              width: tile.Width,
+              height: tile.Height,
               tiles: [tile.Id],
               first: tile
             })

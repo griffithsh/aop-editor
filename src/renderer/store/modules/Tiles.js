@@ -12,15 +12,17 @@ function model (row) {
     TextureX: row.TextureX,
     TextureY: row.TextureY,
     TileGroup_Id: row.TileGroup_Id,
-    Texture_Id: row.Texture_Id
+    Texture_Id: row.Texture_Id,
+    Group_Description: row.Description
   }
 }
 
 let getSql = `
 SELECT
-  *
+  T.*, TG.Description
 FROM
-  Tiles
+  Tiles T
+LEFT JOIN TileGroups TG on T.TileGroup_Id = TG.Id
 ;
 `
 
