@@ -46,8 +46,11 @@
             </span>
           </md-card>
           <md-dialog v-if="selectedQuadBatch" :md-active.sync="showSelectBatch">
-            <md-dialog-title>Select QuadBatch</md-dialog-title>
+            <md-dialog-title>QuadBatches</md-dialog-title>
             <md-dialog-content style="width:500px;padding:8px;">
+              <div>
+                <label>ZIndex:</label><input @blur="setBatchZ()" v-model="selectedQuadBatch.ZIndex" />
+              </div>
               <md-card v-for="batch in quadBatches" :key="batch.Id" class="select-quad-batch" style="width:48%;display:inline-block">
                 <span class="md-subheading">{{ batch.texture }}</span> <span class="md-caption">[{{ batch.Id }}]</span><br>
                 <md-button @click="selectQuadBatch(batch)" class="md-icon-button md-primary" style="float:right">
@@ -455,6 +458,9 @@ export default {
           return this.$store.dispatch('LevelDetails/GET', this.LevelId)
         })
       }
+    },
+    setBatchZ () {
+      this.$store.commit('LevelDetails/EDIT_BATCH', this.selectedQuadBatch)
     }
   }
 }

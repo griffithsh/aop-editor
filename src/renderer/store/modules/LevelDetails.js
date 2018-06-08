@@ -316,6 +316,15 @@ const mutations = {
     } else {
       state.batchesByLayer[batch.LevelLayer_Id] = [batch]
     }
+  },
+
+  EDIT_BATCH (state, batch) {
+    if (state.batchesById[batch.Id]) {
+      if (state.batchesById[batch.Id].ZIndex !== batch.ZIndex) {
+        state.batchesById[batch.Id].ZIndex = batch.ZIndex
+        state.batchesById[batch.Id].dirty = true
+      }
+    }
   }
 }
 
