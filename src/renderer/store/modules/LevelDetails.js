@@ -171,7 +171,7 @@ const actions = {
   },
 
   // SAVE the current state of the loaded level to the database.
-  SAVE ({ commit, dispatch, state, rootState }) {
+  SAVE ({ dispatch, state, rootState }) {
     return new Promise((resolve, reject) => {
       let newBatchIds = {} // should become { 'sdjufsdsd': 123, 'Sif48dgc': 456 }
 
@@ -250,6 +250,12 @@ const actions = {
             resolve()
           }
         }))
+      }).then(() => {
+        dispatch('NOTIFY', { message: 'Saved successfully', duration: 5000 }, { root: true })
+        resolve()
+      }).catch((msg) => {
+        dispatch('ERROR', msg, { root: true })
+        reject(msg)
       })
     })
   }
