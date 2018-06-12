@@ -80,6 +80,7 @@ function model (rows) {
     },
     layers: without(uniqBy(rows, 'LevelLayer_Id').map(modelLayer), null),
     quadBatches: without(uniqBy(rows, 'QuadBatch_Id').map(modelQuadBatch), null),
+    deletedQuadBatches: [],
     quads: without(uniqBy(rows, 'Quad_Id').map(modelQuad), null),
     deletedQuads: [],
     cicadas: without(uniqBy(rows, 'Cicada_Id').map(modelCicada), null),
@@ -92,12 +93,20 @@ function model (rows) {
   }
 
   for (let b of m.quadBatches) {
-    m.batchesByLayer[b.LevelLayer_Id] ? m.batchesByLayer[b.LevelLayer_Id].push(b) : m.batchesByLayer[b.LevelLayer_Id] = [b]
+    if (m.batchesByLayer[b.LevelLayer_Id]) {
+      m.batchesByLayer[b.LevelLayer_Id].push(b)
+    } else {
+      m.batchesByLayer[b.LevelLayer_Id] = [b]
+    }
 
     m.batchesById[b.Id] = b
   }
   for (let q of m.quads) {
-    m.quadsByBatch[q.QuadBatch_Id] ? m.quadsByBatch[q.QuadBatch_Id].push(q) : m.quadsByBatch[q.QuadBatch_Id] = [q]
+    if (m.quadsByBatch[q.QuadBatch_Id]) {
+      m.quadsByBatch[q.QuadBatch_Id].push(q)
+    } else {
+      m.quadsByBatch[q.QuadBatch_Id] = [q]
+    }
 
     if (q.WorldLocationY < m.batchesById[q.QuadBatch_Id].Top) {
       m.batchesById[q.QuadBatch_Id].Top = q.WorldLocationY
@@ -108,10 +117,18 @@ function model (rows) {
   }
 
   for (let cl of m.cicadaLayers) {
-    m.cicadaLayersByCicada[cl.Cicada_Id] ? m.cicadaLayersByCicada[cl.Cicada_Id].push(cl) : m.cicadaLayersByCicada[cl.Cicada_Id] = [cl]
+    if (m.cicadaLayersByCicada[cl.Cicada_Id]) {
+      m.cicadaLayersByCicada[cl.Cicada_Id].push(cl)
+    } else {
+      m.cicadaLayersByCicada[cl.Cicada_Id] = [cl]
+    }
   }
   for (let c of m.cicadas) {
-    m.cicadasByLayer[c.LevelLayer_Id] ? m.cicadasByLayer[c.LevelLayer_Id].push(c) : m.cicadasByLayer[c.LevelLayer_Id] = [c]
+    if (m.cicadasByLayer[c.LevelLayer_Id]) {
+      m.cicadasByLayer[c.LevelLayer_Id].push(c)
+    } else {
+      m.cicadasByLayer[c.LevelLayer_Id] = [c]
+    }
   }
 
   return m
@@ -176,10 +193,36 @@ const actions = {
       let newBatchIds = {} // should become { 'sdjufsdsd': 123, 'Sif48dgc': 456 }
 
       return Promise.resolve().then(() => {
+        return Promise.all(state.deletedQuadBatches.map((batch) => {
+          return new Promise((resolve, reject) => {
+            let sql = 'DELETE FROM Quads WHERE QuadBatch_Id = ?;'
+            rootState.Database.connection.run(sql, [batch.Id], (err) => {
+              if (err) {
+                let msg = 'Could not delete quads for batch ' + batch.Id + ': ' + err
+                return reject(msg)
+              }
+              return resolve()
+            })
+          }).then(() => {
+            return new Promise((resolve, reject) => {
+              console.log('Deleting batch', batch.Id)
+              let sql = 'DELETE FROM QuadBatches WHERE Id = ?;'
+              rootState.Database.connection.run(sql, [batch.Id], (err) => {
+                if (err) {
+                  let msg = 'Could not delete batch ' + batch.Id + ': ' + err
+                  return reject(msg)
+                }
+                return resolve()
+              })
+            })
+          })
+        }))
+      }).then(() => {
         return Promise.all(state.quadBatches.map((batch) => {
           return new Promise((resolve, reject) => {
             if (shouldUpdate(batch)) {
-              rootState.Database.connection.run('UPDATE QuadBatches SET ZIndex=? WHERE Id = ?;', [batch.ZIndex, batch.Id], (err) => {
+              let sql = 'UPDATE QuadBatches SET ZIndex=? WHERE Id = ?;'
+              rootState.Database.connection.run(sql, [batch.ZIndex, batch.Id], (err) => {
                 if (err) {
                   let msg = 'Could not update batch ' + batch.Id + ': ' + err
                   return reject(msg)
@@ -187,7 +230,8 @@ const actions = {
                 return resolve()
               })
             } else if (shouldInsert(batch)) {
-              rootState.Database.connection.run('INSERT INTO QuadBatches (LevelLayer_Id,ZIndex) VALUES (?,?);', [batch.LevelLayer_Id, batch.ZIndex], function (err) {
+              let sql = 'INSERT INTO QuadBatches (LevelLayer_Id, ZIndex) VALUES (?,?);'
+              rootState.Database.connection.run(sql, [batch.LevelLayer_Id, batch.ZIndex], function (err) {
                 if (err) {
                   let msg = 'Could not insert batch ' + batch.Id + ': ' + err
                   return reject(msg)
@@ -204,7 +248,9 @@ const actions = {
         return Promise.all(state.quads.map((quad) => {
           return new Promise((resolve, reject) => {
             if (shouldUpdate(quad)) {
-              rootState.Database.connection.run('UPDATE Quads SET WorldLocationX=?,WorldLocationY=? WHERE Id = ?;', [quad.WorldLocationX, quad.WorldLocationY, quad.Id], (err) => {
+              let sql = 'UPDATE Quads SET WorldLocationX=?,WorldLocationY=? WHERE Id = ?;'
+              let params = [quad.WorldLocationX, quad.WorldLocationY, quad.Id]
+              rootState.Database.connection.run(sql, params, (err) => {
                 if (err) {
                   let msg = 'Could not update quad ' + quad.Id + ': ' + err
                   return reject(msg)
@@ -213,9 +259,9 @@ const actions = {
               })
             } else if (shouldInsert(quad)) {
               if (isNew(quad.QuadBatch_Id)) {
-                // console.log('FIXME(griffithsh): cant save quads for new batches yet', newBatchIds, quad.QuadBatch_Id)
-                // return resolve()
-                rootState.Database.connection.run('INSERT INTO Quads (WorldLocationX,WorldLocationY,Tile_Id,QuadBatch_Id) VALUES (?,?,?,?);', [quad.WorldLocationX, quad.WorldLocationY, quad.Tile_Id, newBatchIds[quad.QuadBatch_Id]], (err) => {
+                let sql = 'INSERT INTO Quads (WorldLocationX,WorldLocationY,Tile_Id,QuadBatch_Id) VALUES (?,?,?,?);'
+                let params = [quad.WorldLocationX, quad.WorldLocationY, quad.Tile_Id, newBatchIds[quad.QuadBatch_Id]]
+                rootState.Database.connection.run(sql, params, (err) => {
                   if (err) {
                     let msg = 'Could not insert new quad ' + quad.Id + ': ' + err
                     return reject(msg)
@@ -223,7 +269,9 @@ const actions = {
                   return resolve()
                 })
               } else {
-                rootState.Database.connection.run('INSERT INTO Quads (WorldLocationX,WorldLocationY,Tile_Id,QuadBatch_Id) VALUES (?,?,?,?);', [quad.WorldLocationX, quad.WorldLocationY, quad.Tile_Id, quad.QuadBatch_Id], (err) => {
+                let sql = 'INSERT INTO Quads (WorldLocationX,WorldLocationY,Tile_Id,QuadBatch_Id) VALUES (?,?,?,?);'
+                let params = [quad.WorldLocationX, quad.WorldLocationY, quad.Tile_Id, quad.QuadBatch_Id]
+                rootState.Database.connection.run(sql, params, (err) => {
                   if (err) {
                     let msg = 'Could not insert new quad ' + quad.Id + ': ' + err
                     return reject(msg)
@@ -270,7 +318,11 @@ const mutations = {
 
   APPEND_QUAD (state, quad) {
     state.quads.push(quad)
-    state.quadsByBatch[quad.QuadBatch_Id] ? state.quadsByBatch[quad.QuadBatch_Id].push(quad) : state.quadsByBatch[quad.QuadBatch_Id] = [quad]
+    if (state.quadsByBatch[quad.QuadBatch_Id]) {
+      state.quadsByBatch[quad.QuadBatch_Id].push(quad)
+    } else {
+      state.quadsByBatch[quad.QuadBatch_Id] = [quad]
+    }
   },
 
   REPOSITION_QUAD (state, data) {
@@ -323,6 +375,53 @@ const mutations = {
       if (state.batchesById[batch.Id].ZIndex !== batch.ZIndex) {
         state.batchesById[batch.Id].ZIndex = batch.ZIndex
         state.batchesById[batch.Id].dirty = true
+      }
+    }
+  },
+
+  DELETE_BATCH (state, batch) {
+    // The important part of this implementation is to add the batch to deleted
+    // batches. Secondary importance is to remove from:
+    //   - state.quadBatches
+    //   - state.batchesByLayer
+    //   - state.batchesById
+    for (let i = 0; i < state.quadBatches.length; i++) {
+      if (state.quadBatches[i].Id === batch.Id) {
+        let deleted = state.quadBatches.splice(i, 1)[0]
+        let bbl = state.batchesByLayer[batch.LevelLayer_Id]
+        for (let j = 0; j < bbl.length; j++) {
+          if (bbl.Id === batch.Id) {
+            bbl.splice(j, 1)
+            break
+          }
+        }
+        delete state.batchesById[batch.Id]
+        if (!isNew(deleted.Id)) {
+          state.deletedQuadBatches.push(deleted)
+        }
+        break
+      }
+    }
+
+    // Also do the same for any quads this batch referenced
+    for (let i = 0; i < state.quads.length; i++) {
+      let q = state.quads[i]
+      if (q.QuadBatch_Id === batch.Id) {
+        // Move this quad into a "deleted quads" list, to be dealt with and
+        // purged on LevelDetails/SAVE.
+        let deleted = state.quads.splice(i, 1)[0]
+        if (!isNew(q.Id)) {
+          state.deletedQuads.push(deleted)
+        }
+        let qbb = state.quadsByBatch[q.QuadBatch_Id]
+        for (let j = 0; j < qbb.length; j++) {
+          if (qbb[j].Id === q.Id) {
+            qbb.splice(j, 1)
+            break
+          }
+        }
+        // because we spliced, we need to correct the index.
+        i--
       }
     }
   }

@@ -48,8 +48,11 @@
           <md-dialog v-if="selectedQuadBatch" :md-active.sync="showSelectBatch">
             <md-dialog-title>QuadBatches</md-dialog-title>
             <md-dialog-content style="width:500px;padding:8px;">
-              <div>
-                <label>ZIndex:</label><input @blur="setBatchZ()" v-model="selectedQuadBatch.ZIndex" />
+              <div style="line-height:47px; margin:0px 8px;">
+                <label class="md-subheading">ZIndex:</label><input @blur="setBatchZ()" v-model="selectedQuadBatch.ZIndex" />
+                <md-button class="md-button-icon" @click="deleteQuadBatch(selectedQuadBatch)">
+                  <md-icon>delete</md-icon>
+                </md-button>
               </div>
               <md-card v-for="batch in quadBatches" :key="batch.Id" class="select-quad-batch" style="width:48%;display:inline-block">
                 <span class="md-subheading">{{ batch.texture }}</span> <span class="md-caption">[{{ batch.Id }}]</span><br>
@@ -461,7 +464,13 @@ export default {
     },
     setBatchZ () {
       this.$store.commit('LevelDetails/EDIT_BATCH', this.selectedQuadBatch)
+    },
+
+    deleteQuadBatch (batch) {
+      this.$store.commit('LevelDetails/DELETE_BATCH', batch)
+      this.autoSelectQuadBatch()
     }
+
   }
 }
 </script>
